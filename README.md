@@ -31,11 +31,13 @@ The app will be available at:
 
 ### First-time setup
 
-After the container starts, seed the database with default kids, tasks, and parent logins:
+After the container starts, seed the database with your kids' names, default tasks, and parent logins:
 
 ```bash
-docker exec gigdash node db/seed.js
+docker exec -e KID1_NAME="Alex" -e KID2_NAME="Jordan" gigdash node db/seed.js
 ```
+
+Replace `Alex` and `Jordan` with your kids' names. This only needs to be run once — the database persists in a Docker volume and won't be re-seeded on updates.
 
 Default logins: `dad / parent123` and `mom / parent123` — change these after first login.
 
