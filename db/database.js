@@ -59,7 +59,33 @@ function initDatabase() {
       username      TEXT    UNIQUE NOT NULL,
       password_hash TEXT    NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS tracking_tasks (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      title       TEXT    NOT NULL,
+      step1_label TEXT    NOT NULL DEFAULT 'Morning',
+      step2_label TEXT    NOT NULL DEFAULT 'Evening',
+      is_active   INTEGER NOT NULL DEFAULT 1
+    );
+
+    CREATE TABLE IF NOT EXISTS tracking_completions (
+      id           INTEGER  PRIMARY KEY AUTOINCREMENT,
+      task_id      INTEGER  NOT NULL,
+      step         INTEGER  NOT NULL,   -- 1 or 2
+      kid_id       INTEGER,             -- NULL = parent did it
+      date         TEXT     NOT NULL,
+      completed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(task_id, step, date),
+      FOREIGN KEY (task_id) REFERENCES tracking_tasks(id),
+      FOREIGN KEY (kid_id)  REFERENCES kids(id)
+    );
   `);
+
+  // Migrations
+  const gigCols = db.prepare('PRAGMA table_info(gig_tasks)').all().map(c => c.name);
+  if (!gigCols.includes('type')) {
+    db.exec("ALTER TABLE gig_tasks ADD COLUMN type TEXT NOT NULL DEFAULT 'weekly'");
+  }
 
   return db;
 }

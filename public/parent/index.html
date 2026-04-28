@@ -339,6 +339,48 @@
 
     .cashout-note { font-size: 0.82rem; color: var(--muted); }
 
+    /* ── TYPE FILTER ────────────────────────────────────────── */
+    .type-filter {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .type-filter::-webkit-scrollbar { display: none; }
+
+    .type-filter-btn {
+      padding: 7px 16px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      border-radius: 20px;
+      background: var(--surface);
+      color: var(--muted);
+      border: 1px solid var(--border);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .type-filter-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+    /* ── TYPE BADGES ────────────────────────────────────────── */
+    .type-badge {
+      display: inline-block;
+      font-size: 0.62rem;
+      font-weight: 700;
+      padding: 1px 7px;
+      border-radius: 20px;
+      margin-left: 6px;
+      vertical-align: middle;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .type-badge.type-weekly    { background: #eff6ff; color: var(--primary);  border: 1px solid #bfdbfe; }
+    .type-badge.type-biweekly  { background: #f5f3ff; color: #7c3aed;         border: 1px solid #ddd6fe; }
+    .type-badge.type-permanent { background: var(--gold-bg); color: var(--gold); border: 1px solid #fde68a; }
+
+    .kid-toggle[disabled] { cursor: not-allowed; opacity: 0.4; }
+
     /* loading / empty states */
     .loading { color: var(--muted); text-align: center; padding: 32px; font-size: 0.95rem; }
     .empty   { color: var(--muted); text-align: center; padding: 20px 16px; font-size: 0.9rem; }
@@ -393,6 +435,7 @@
 
   <div id="tab-bar">
     <button class="tab-btn active" data-tab="daily">Daily Tasks</button>
+    <button class="tab-btn"        data-tab="tracking">Tracking</button>
     <button class="tab-btn"        data-tab="gigs">Gig Tasks</button>
     <button class="tab-btn"        data-tab="earnings">Earnings</button>
   </div>
@@ -503,6 +546,7 @@ function renderTab(tab) {
   const el = $('tab-content');
   el.innerHTML = '<div class="loading">Loading…</div>';
   if (tab === 'daily')    renderDaily(el);
+  if (tab === 'tracking') renderTracking(el);
   if (tab === 'gigs')     renderGigs(el);
   if (tab === 'earnings') renderEarnings(el);
 }
@@ -604,38 +648,51 @@ async function renderGigs(el) {
   const tasks = await api('GET', '/parent/gig-tasks');
   if (!tasks) return;
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  let activeType = 'all';
+  const TYPE_LABELS = { weekly: 'Weekly', biweekly: 'Bi-weekly', permanent: 'Permanent' };
 
   function completedBy(task) {
     if (!task.completed_by) return [];
-    return task.completed_by.split(',').map(Number);
+    return task.completed_by.toString().split(',').map(Number);
   }
 
-  const rows = tasks.length === 0
-    ? '<div class="empty">No gig tasks yet — add one below.</div>'
-    : tasks.map(task => {
-        const cb   = completedBy(task);
-        const who  = task.kid_id ? `<div class="task-row-meta">Only for ${kidName(task.kid_id)}</div>` : '';
-        const toggles = kids.map(k => {
-          const done = cb.includes(k.id);
-          const cls  = done ? `done-${k.name.toLowerCase()}` : '';
-          return `<button class="kid-toggle ${cls}"
-                    data-task="${task.id}" data-kid="${k.id}" data-done="${done ? '1' : '0'}"
-                    title="${k.name}">
-                    ${k.name.charAt(0)}
-                  </button>`;
-        }).join('');
-        return `
-          <div class="task-row" id="gig-row-${task.id}">
-            <div style="flex:1">
-              <div class="task-row-label">${task.title}</div>
-              ${who}
-            </div>
-            <span class="task-row-value">${fmt(task.value)}</span>
-            <div class="kid-toggles">${toggles}</div>
-            <button class="delete-btn" data-del-gig="${task.id}" title="Archive task">×</button>
-          </div>`;
+  function buildRows() {
+    const filtered = activeType === 'all' ? tasks : tasks.filter(t => t.type === activeType);
+    if (filtered.length === 0) return '<div class="empty">No tasks of this type yet.</div>';
+
+    return filtered.map(task => {
+      const cb      = completedBy(task);
+      const takenBy = task.taken_by_kid_id;
+      const who     = task.kid_id ? `<div class="task-row-meta">Only for ${kidName(task.kid_id)}</div>` : '';
+
+      const toggles = kids.map(k => {
+        const done          = cb.includes(k.id);
+        const takenByOther  = takenBy && takenBy != k.id && !done;
+        const cls           = done ? `done-${k.name.toLowerCase()}` : '';
+        const takerName     = kids.find(x => x.id == takenBy)?.name;
+        const titleAttr     = takenByOther ? `Claimed by ${takerName}` : k.name;
+        return `<button class="kid-toggle ${cls}" ${takenByOther ? 'disabled' : ''}
+                  data-task="${task.id}" data-kid="${k.id}" data-done="${done ? '1' : '0'}"
+                  title="${titleAttr}">
+                  ${takenByOther ? '🔒' : k.name.charAt(0)}
+                </button>`;
       }).join('');
+
+      return `
+        <div class="task-row">
+          <div style="flex:1">
+            <div class="task-row-label">
+              ${task.title}
+              <span class="type-badge type-${task.type}">${TYPE_LABELS[task.type] || task.type}</span>
+            </div>
+            ${who}
+          </div>
+          <span class="task-row-value">${fmt(task.value)}</span>
+          <div class="kid-toggles">${toggles}</div>
+          <button class="delete-btn" data-del-gig="${task.id}" title="Archive task">×</button>
+        </div>`;
+    }).join('');
+  }
 
   const kidOptions = `
     <option value="">Both kids</option>
@@ -643,59 +700,187 @@ async function renderGigs(el) {
   `;
 
   el.innerHTML = `
+    <div class="type-filter">
+      <button class="type-filter-btn active" data-type="all">All</button>
+      <button class="type-filter-btn" data-type="weekly">Weekly</button>
+      <button class="type-filter-btn" data-type="biweekly">Bi-weekly</button>
+      <button class="type-filter-btn" data-type="permanent">Permanent</button>
+    </div>
     <div class="card">
-      <div class="card-section-title">Available today — tap a name to mark earned</div>
-      ${rows}
+      <div class="card-section-title">Tap a name to mark earned — first come, first serve</div>
+      <div id="gig-rows">${buildRows()}</div>
       <div class="add-form">
         <input type="text" id="gig-title" placeholder="New gig task…">
         <div class="add-form-row">
           <input type="number" id="gig-value" placeholder="$0.00" min="0.01" step="0.25">
+          <select id="gig-type">
+            <option value="weekly">Weekly (7 days)</option>
+            <option value="biweekly">Bi-weekly (14 days)</option>
+            <option value="permanent">Permanent</option>
+          </select>
           <select id="gig-kid">${kidOptions}</select>
-          <button class="btn-primary" id="gig-add-btn">+ Add</button>
         </div>
+        <button class="btn-primary" id="gig-add-btn">+ Add Gig Task</button>
       </div>
     </div>
   `;
 
-  // Toggle gig completion
-  el.querySelectorAll('.kid-toggle').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const taskId   = btn.dataset.task;
-      const kidId    = btn.dataset.kid;
-      const wasDone  = btn.dataset.done === '1';
-      const kidName_ = kids.find(k => k.id == kidId)?.name.toLowerCase() || '';
-      btn.dataset.done = wasDone ? '0' : '1';
-      btn.className    = `kid-toggle${!wasDone ? ` done-${kidName_}` : ''}`;
-      await api('POST', `/parent/gig-tasks/${taskId}/complete`,
-        { kid_id: +kidId, completed: !wasDone, date: todayStr });
-      const task    = tasks.find(t => t.id == taskId);
-      const earner  = kids.find(k => k.id == kidId)?.name;
-      toast(!wasDone ? `${earner} earned ${fmt(task?.value || 0)} 🎉` : 'Earning removed');
+  // Type filter
+  el.querySelectorAll('.type-filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      el.querySelectorAll('.type-filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeType = btn.dataset.type;
+      $('gig-rows').innerHTML = buildRows();
+      attachToggles();
+      attachDeletes();
     });
   });
 
-  // Archive gig task
-  el.querySelectorAll('[data-del-gig]').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      if (!confirm('Archive this gig task?')) return;
-      await api('DELETE', `/parent/gig-tasks/${btn.dataset.delGig}`);
-      toast('Task archived');
-      renderTab('gigs');
+  function attachToggles() {
+    el.querySelectorAll('#gig-rows .kid-toggle:not([disabled])').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const taskId  = btn.dataset.task;
+        const kidId   = btn.dataset.kid;
+        const wasDone = btn.dataset.done === '1';
+        const earner  = kids.find(k => k.id == kidId)?.name;
+        const task    = tasks.find(t => t.id == taskId);
+        const res = await api('POST', `/parent/gig-tasks/${taskId}/complete`,
+          { kid_id: +kidId, completed: !wasDone });
+        if (res?.error) { toast(`⚠️ ${res.error}`); return; }
+        toast(!wasDone ? `${earner} earned ${fmt(task?.value || 0)} 🎉` : 'Earning removed');
+        renderTab('gigs');
+      });
     });
-  });
+  }
 
-  // Add gig task
+  function attachDeletes() {
+    el.querySelectorAll('[data-del-gig]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (!confirm('Archive this gig task?')) return;
+        await api('DELETE', `/parent/gig-tasks/${btn.dataset.delGig}`);
+        toast('Task archived');
+        renderTab('gigs');
+      });
+    });
+  }
+
+  attachToggles();
+  attachDeletes();
+
   $('gig-add-btn').addEventListener('click', async () => {
     const title  = $('gig-title').value.trim();
     const value  = parseFloat($('gig-value').value);
+    const type   = $('gig-type').value;
     const kid_id = $('gig-kid').value || null;
-    if (!title || isNaN(value) || value <= 0) {
-      toast('Enter a title and a dollar value');
-      return;
-    }
-    await api('POST', '/parent/gig-tasks', { title, value, kid_id: kid_id ? +kid_id : null });
+    if (!title || isNaN(value) || value <= 0) { toast('Enter a title and a dollar value'); return; }
+    await api('POST', '/parent/gig-tasks', { title, value, type, kid_id: kid_id ? +kid_id : null });
     toast('Gig task added');
     renderTab('gigs');
+  });
+}
+
+// ── TRACKING TASKS ───────────────────────────────────────────
+async function renderTracking(el) {
+  const tasks = await api('GET', '/parent/tracking-tasks');
+  if (!tasks) return;
+
+  function whoLabel(done, kidId) {
+    if (!done) return '—';
+    if (kidId === null || kidId === undefined) return 'Parent';
+    return kids.find(k => k.id == kidId)?.name || 'Someone';
+  }
+
+  function stepToggles(task, step, done, kidId) {
+    const btns = [
+      { label: 'Us', id: 0, isParent: true },
+      ...kids.map(k => ({ label: k.name.charAt(0), id: k.id, isParent: false }))
+    ];
+    return btns.map(btn => {
+      const isActive = done && (
+        (btn.isParent && (kidId === null || kidId === undefined)) ||
+        (!btn.isParent && kidId == btn.id)
+      );
+      const cls = isActive ? `kid-toggle done-${btn.isParent ? 'parent' : kids.find(k=>k.id==btn.id)?.name.toLowerCase()}` : 'kid-toggle';
+      const activeStyle = isActive ? 'background:#f0fdf4;border-color:#22c55e;color:#22c55e;' : '';
+      return `<button class="kid-toggle" style="${activeStyle}"
+                data-tr-task="${task.id}" data-tr-step="${step}"
+                data-tr-kid="${btn.isParent ? '' : btn.id}"
+                data-tr-done="${isActive ? '1' : '0'}"
+                title="${btn.isParent ? 'Parent / Us' : kids.find(k=>k.id==btn.id)?.name}">
+                ${btn.label}
+              </button>`;
+    }).join('');
+  }
+
+  const rows = tasks.length === 0
+    ? '<div class="empty">No tracking tasks yet — add one below.</div>'
+    : tasks.map(task => `
+        <div class="task-row">
+          <div style="flex:1">
+            <div class="task-row-label">${task.title}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:0.78rem;color:var(--muted);min-width:60px">${task.step1_label}</span>
+              <div class="kid-toggles">${stepToggles(task, 1, task.step1_done, task.step1_kid_id)}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:0.78rem;color:var(--muted);min-width:60px">${task.step2_label}</span>
+              <div class="kid-toggles">${stepToggles(task, 2, task.step2_done, task.step2_kid_id)}</div>
+            </div>
+          </div>
+          <button class="delete-btn" data-del-tracking="${task.id}" title="Remove">×</button>
+        </div>`
+    ).join('');
+
+  el.innerHTML = `
+    <div class="card">
+      <div class="card-section-title">Today — tap who completed each step (Us = parent)</div>
+      ${rows}
+      <div class="add-form">
+        <input type="text" id="tr-title" placeholder="Tracking task name… (e.g. Feed the dogs)">
+        <div class="add-form-row">
+          <input type="text" id="tr-step1" placeholder="Step 1 label (Morning)">
+          <input type="text" id="tr-step2" placeholder="Step 2 label (Evening)">
+        </div>
+        <button class="btn-primary" id="tr-add-btn">+ Add Tracking Task</button>
+      </div>
+    </div>
+  `;
+
+  // Step toggles
+  el.querySelectorAll('[data-tr-task]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const taskId  = btn.dataset.trTask;
+      const step    = btn.dataset.trStep;
+      const kidId   = btn.dataset.trKid === '' ? null : +btn.dataset.trKid;
+      const wasDone = btn.dataset.trDone === '1';
+      await api('POST', `/parent/tracking-tasks/${taskId}/step/${step}/complete`,
+        { kid_id: kidId, completed: !wasDone });
+      renderTab('tracking');
+    });
+  });
+
+  // Delete
+  el.querySelectorAll('[data-del-tracking]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Remove this tracking task?')) return;
+      await api('DELETE', `/parent/tracking-tasks/${btn.dataset.delTracking}`);
+      toast('Tracking task removed');
+      renderTab('tracking');
+    });
+  });
+
+  // Add
+  $('tr-add-btn').addEventListener('click', async () => {
+    const title      = $('tr-title').value.trim();
+    const step1_label = $('tr-step1').value.trim() || 'Morning';
+    const step2_label = $('tr-step2').value.trim() || 'Evening';
+    if (!title) { toast('Enter a task name'); return; }
+    await api('POST', '/parent/tracking-tasks', { title, step1_label, step2_label });
+    toast('Tracking task added');
+    renderTab('tracking');
   });
 }
 

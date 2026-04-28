@@ -33,6 +33,10 @@ addGig.run('Clean the bathroom sink',      1.50);
 addGig.run('Fold & put away laundry',      2.00);
 addGig.run('Feed the pet',                 0.50);
 
+// Tracking tasks
+const addTracking = db.prepare('INSERT INTO tracking_tasks (title, step1_label, step2_label) VALUES (?, ?, ?)');
+addTracking.run('Feed the dogs', 'Morning', 'Evening');
+
 // Parent accounts  — passwords: parent123
 const hash = bcrypt.hashSync('parent123', 10);
 const addParent = db.prepare('INSERT INTO parents (username, password_hash) VALUES (?, ?)');

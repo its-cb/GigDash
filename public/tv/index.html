@@ -32,6 +32,8 @@
       color: var(--text);
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
       overflow: hidden;
+      display: flex;
+      flex-direction: column;
     }
 
     /* ── HEADER ─────────────────────────────────────────────── */
@@ -68,11 +70,45 @@
       text-align: right;
     }
 
+    /* ── TRACKING BAR ───────────────────────────────────────── */
+    #tracking-bar {
+      flex-shrink: 0;
+      padding: 10px 48px;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      display: none;
+      align-items: center;
+      gap: 40px;
+      flex-wrap: wrap;
+    }
+
+    .tr-item { display: flex; align-items: center; gap: 20px; }
+
+    .tr-title {
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+    }
+
+    .tr-step {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    .tr-step.done { color: var(--green); font-weight: 600; }
+    .tr-step .tr-who { font-weight: 700; }
+
     /* ── COLUMNS ────────────────────────────────────────────── */
     #columns {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      height: calc(100vh - 72px);
+      flex: 1;
+      min-height: 0;
     }
 
     .kid-col {
@@ -282,6 +318,7 @@
     <div id="date-el"></div>
     <div id="clock-el"></div>
   </div>
+  <div id="tracking-bar"></div>
   <div id="columns"></div>
   <div id="refresh-dot"></div>
 
@@ -302,7 +339,7 @@
       return '$' + parseFloat(n).toFixed(2);
     }
 
-    function renderKid(kid) {
+    function renderKid(kid, allKids) {
       const cls      = kid.name.toLowerCase();
       const done     = kid.dailyTasks.filter(t => t.completed).length;
       const total    = kid.dailyTasks.length;
@@ -316,11 +353,14 @@
         </div>
       `).join('');
 
-      const gigItems = kid.gigTasks.length === 0
-        ? '<div class="task-item"><span class="task-label" style="color:var(--muted)">No gig tasks assigned</span></div>'
-        : kid.gigTasks.map(t => `
-          <div class="task-item ${t.completed_today ? 'gig-done' : ''}">
-            <div class="check-circle">${t.completed_today ? '✓' : ''}</div>
+      // Filter out tasks claimed by the other kid (first-come-first-serve)
+      const myGigs = kid.gigTasks.filter(t => !t.taken_by_kid_id || t.completed_by_me);
+
+      const gigItems = myGigs.length === 0
+        ? '<div class="task-item"><span class="task-label" style="color:var(--muted)">No gig tasks available</span></div>'
+        : myGigs.map(t => `
+          <div class="task-item ${t.completed_by_me ? 'gig-done' : ''}">
+            <div class="check-circle">${t.completed_by_me ? '✓' : ''}</div>
             <span class="task-label">${t.title}</span>
             <span class="gig-value">${fmt(t.value)}</span>
           </div>
@@ -374,9 +414,32 @@
       `;
     }
 
+    function renderTrackingBar(data) {
+      const bar = document.getElementById('tracking-bar');
+      if (!data.trackingTasks || data.trackingTasks.length === 0) {
+        bar.style.display = 'none'; return;
+      }
+      const kidMap = {};
+      data.kids.forEach(k => { kidMap[k.id] = k.name; });
+      function stepHtml(label, done, kidId) {
+        if (!done) return `<span class="tr-step">${label}: Not done</span>`;
+        const who = (kidId === null || kidId === undefined) ? 'Parent' : (kidMap[kidId] || 'Someone');
+        return `<span class="tr-step done">${label}: <span class="tr-who">${who} ✓</span></span>`;
+      }
+      bar.style.display = 'flex';
+      bar.innerHTML = data.trackingTasks.map(t => `
+        <div class="tr-item">
+          <span class="tr-title">${t.title}</span>
+          ${stepHtml(t.step1_label, t.step1_done, t.step1_kid_id)}
+          ${stepHtml(t.step2_label, t.step2_done, t.step2_kid_id)}
+        </div>
+      `).join('');
+    }
+
     function render(data) {
+      renderTrackingBar(data);
       document.getElementById('columns').innerHTML =
-        data.kids.map(renderKid).join('');
+        data.kids.map(kid => renderKid(kid, data.kids)).join('');
     }
 
     // ── Fetch & poll ─────────────────────────────────────────
