@@ -8,7 +8,8 @@
 
 IP=${1:?Usage: bash deploy.sh <device-ip> [username]}
 USER=${2:-gigdash}
-PROJECT="/Users/cbaldwin/Documents/VS Code/GigDash"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_NAME="$(basename "$SCRIPT_DIR")"
 
 echo ""
 echo "╔══════════════════════════════════════╗"
@@ -17,16 +18,16 @@ echo "╚═══════════════════════�
 echo ""
 
 echo "→ Building zip..."
-cd "$(dirname "$PROJECT")"
-zip -r gigdash.zip GigDash/ -q \
-    --exclude "GigDash/.git/*" \
-    --exclude "GigDash/node_modules/*" \
-    --exclude "GigDash/gigdash.db" \
-    --exclude "GigDash/*.zip"
+cd "$(dirname "$SCRIPT_DIR")"
+zip -r gigdash.zip "$PROJECT_NAME/" -q \
+    --exclude "$PROJECT_NAME/.git/*" \
+    --exclude "$PROJECT_NAME/node_modules/*" \
+    --exclude "$PROJECT_NAME/gigdash.db" \
+    --exclude "$PROJECT_NAME/*.zip"
 echo "  Done."
 
 echo "→ Transferring to $USER@$IP..."
-scp "$(dirname "$PROJECT")/gigdash.zip" $USER@$IP:/tmp/
+scp "$(dirname "$SCRIPT_DIR")/gigdash.zip" $USER@$IP:/tmp/
 echo "  Done."
 
 echo "→ Running setup on $IP..."
