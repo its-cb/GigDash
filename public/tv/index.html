@@ -70,38 +70,74 @@
       text-align: right;
     }
 
-    /* ── TRACKING BAR ───────────────────────────────────────── */
+    /* ── TRACKING SECTION ───────────────────────────────────── */
     #tracking-bar {
       flex-shrink: 0;
-      padding: 10px 48px;
-      background: var(--surface2);
-      border-bottom: 1px solid var(--border);
+      padding: 14px 48px;
+      background: var(--surface);
+      border-bottom: 2px solid var(--border);
       display: none;
-      align-items: center;
-      gap: 40px;
+      align-items: stretch;
+      gap: 24px;
       flex-wrap: wrap;
     }
 
-    .tr-item { display: flex; align-items: center; gap: 20px; }
+    .tr-item {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 24px;
+      flex: 1;
+    }
 
     .tr-title {
-      font-size: 0.78rem;
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      min-width: 120px;
+      flex-shrink: 0;
+    }
+
+    .tr-steps { display: flex; gap: 12px; }
+
+    .tr-step-block {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 10px 24px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      min-width: 130px;
+    }
+
+    .tr-step-block.done {
+      border-color: var(--green);
+      background: var(--green-dim);
+    }
+
+    .tr-step-lbl {
+      font-size: 0.68rem;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.1em;
       color: var(--muted);
     }
 
-    .tr-step {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 0.9rem;
+    .tr-step-who {
+      font-size: 1.1rem;
+      font-weight: 800;
       color: var(--muted);
     }
 
-    .tr-step.done { color: var(--green); font-weight: 600; }
-    .tr-step .tr-who { font-weight: 700; }
+    .tr-step-block.done .tr-step-lbl { color: var(--green); opacity: 0.8; }
+    .tr-step-block.done .tr-step-who { color: var(--green); }
 
     /* ── COLUMNS ────────────────────────────────────────────── */
     #columns {
@@ -421,17 +457,26 @@
       }
       const kidMap = {};
       data.kids.forEach(k => { kidMap[k.id] = k.name; });
-      function stepHtml(label, done, kidId) {
-        if (!done) return `<span class="tr-step">${label}: Not done</span>`;
-        const who = (kidId === null || kidId === undefined) ? 'Parent' : (kidMap[kidId] || 'Someone');
-        return `<span class="tr-step done">${label}: <span class="tr-who">${who} ✓</span></span>`;
+
+      function stepBlock(label, done, kidId) {
+        const who = done
+          ? ((kidId === null || kidId === undefined) ? 'Us' : (kidMap[kidId] || 'Someone'))
+          : 'Not done';
+        return `
+          <div class="tr-step-block ${done ? 'done' : ''}">
+            <span class="tr-step-lbl">${label}</span>
+            <span class="tr-step-who">${who}${done ? ' ✓' : ''}</span>
+          </div>`;
       }
+
       bar.style.display = 'flex';
       bar.innerHTML = data.trackingTasks.map(t => `
         <div class="tr-item">
           <span class="tr-title">${t.title}</span>
-          ${stepHtml(t.step1_label, t.step1_done, t.step1_kid_id)}
-          ${stepHtml(t.step2_label, t.step2_done, t.step2_kid_id)}
+          <div class="tr-steps">
+            ${stepBlock(t.step1_label, t.step1_done, t.step1_kid_id)}
+            ${stepBlock(t.step2_label, t.step2_done, t.step2_kid_id)}
+          </div>
         </div>
       `).join('');
     }
