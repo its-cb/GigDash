@@ -460,7 +460,7 @@
 
       function stepBlock(label, done, kidId) {
         const who = done
-          ? ((kidId === null || kidId === undefined) ? 'Us' : (kidMap[kidId] || 'Someone'))
+          ? ((kidId === null || kidId === undefined) ? 'Parents' : (kidMap[kidId] || 'Someone'))
           : 'Not done';
         return `
           <div class="tr-step-block ${done ? 'done' : ''}">

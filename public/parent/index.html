@@ -808,7 +808,7 @@ async function renderTracking(el) {
 
   function stepToggles(task, step, done, kidId) {
     const btns = [
-      { label: 'Us', id: 0, isParent: true },
+      { label: 'P', id: 0, isParent: true },
       ...kids.map(k => ({ label: k.name.charAt(0), id: k.id, isParent: false }))
     ];
     return btns.map(btn => {
@@ -822,7 +822,7 @@ async function renderTracking(el) {
                 data-tr-task="${task.id}" data-tr-step="${step}"
                 data-tr-kid="${btn.isParent ? '' : btn.id}"
                 data-tr-done="${isActive ? '1' : '0'}"
-                title="${btn.isParent ? 'Parent / Us' : kids.find(k=>k.id==btn.id)?.name}">
+                title="${btn.isParent ? 'Parent' : kids.find(k=>k.id==btn.id)?.name}">
                 ${btn.label}
               </button>`;
     }).join('');
