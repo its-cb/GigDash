@@ -21,8 +21,8 @@
       --red-bg:  #fff5f5;
       --gold:    #f59e0b;
       --gold-bg: #fffbeb;
-      --kayden:  #3b82f6;
-      --monroe:  #ec4899;
+      --kid1:    #3b82f6;
+      --kid2:    #ec4899;
       --radius:  12px;
       --shadow:  0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
     }
@@ -199,8 +199,8 @@
       text-align: center;
       transition: all 0.15s;
     }
-    .kid-chip.active-kayden { border-color: var(--kayden); background: #eff6ff; color: var(--kayden); }
-    .kid-chip.active-monroe { border-color: var(--monroe); background: #fdf2f8; color: var(--monroe); }
+    .kid-chip.active-kid-1 { border-color: var(--kid1); background: #eff6ff; color: var(--kid1); }
+    .kid-chip.active-kid-2 { border-color: var(--kid2); background: #fdf2f8; color: var(--kid2); }
 
     /* ── CARDS ──────────────────────────────────────────────── */
     .card {
@@ -273,8 +273,8 @@
       padding: 0;
     }
 
-    .kid-toggle.done-kayden { background: #eff6ff; border-color: var(--kayden); color: var(--kayden); }
-    .kid-toggle.done-monroe { background: #fdf2f8; border-color: var(--monroe); color: var(--monroe); }
+    .kid-toggle.done-kid-1 { background: #eff6ff; border-color: var(--kid1); color: var(--kid1); }
+    .kid-toggle.done-kid-2 { background: #fdf2f8; border-color: var(--kid2); color: var(--kid2); }
 
     .delete-btn {
       width: 30px;
@@ -543,6 +543,11 @@ function kidName(id) {
   return k ? k.name : 'All';
 }
 
+function kidClass(id) {
+  const idx = kids.findIndex(k => k.id == id);
+  return idx >= 0 ? `kid-${idx + 1}` : 'kid-1';
+}
+
 // ── Tabs ─────────────────────────────────────────────────────
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -581,7 +586,7 @@ async function renderDaily(el) {
         const who = task.kid_id ? `<div class="task-row-meta">Only for ${kidName(task.kid_id)}</div>` : '';
         const toggles = kids.map(k => {
           const done = cb.includes(k.id);
-          const cls  = done ? `done-${k.name.toLowerCase()}` : '';
+          const cls  = done ? `done-${kidClass(k.id)}` : '';
           return `<button class="kid-toggle ${cls}"
                     data-task="${task.id}" data-kid="${k.id}" data-done="${done ? '1' : '0'}"
                     title="${k.name}">
@@ -624,9 +629,8 @@ async function renderDaily(el) {
       const taskId   = btn.dataset.task;
       const kidId    = btn.dataset.kid;
       const wasDone  = btn.dataset.done === '1';
-      const kidName_ = kids.find(k => k.id == kidId)?.name.toLowerCase() || '';
       btn.dataset.done = wasDone ? '0' : '1';
-      btn.className    = `kid-toggle${!wasDone ? ` done-${kidName_}` : ''}`;
+      btn.className    = `kid-toggle${!wasDone ? ` done-${kidClass(+kidId)}` : ''}`;
       await api('POST', `/parent/daily-tasks/${taskId}/complete`,
         { kid_id: +kidId, completed: !wasDone, date: todayStr });
       toast(!wasDone ? '✓ Marked complete' : 'Marked incomplete');
@@ -679,7 +683,7 @@ async function renderGigs(el) {
       const toggles = kids.map(k => {
         const done          = cb.includes(k.id);
         const takenByOther  = takenBy && takenBy != k.id && !done;
-        const cls           = done ? `done-${k.name.toLowerCase()}` : '';
+        const cls           = done ? `done-${kidClass(k.id)}` : '';
         const takerName     = kids.find(x => x.id == takenBy)?.name;
         const titleAttr     = takenByOther ? `Claimed by ${takerName}` : k.name;
         return `<button class="kid-toggle ${cls}" ${takenByOther ? 'disabled' : ''}
@@ -812,7 +816,7 @@ async function renderTracking(el) {
         (btn.isParent && (kidId === null || kidId === undefined)) ||
         (!btn.isParent && kidId == btn.id)
       );
-      const cls = isActive ? `kid-toggle done-${btn.isParent ? 'parent' : kids.find(k=>k.id==btn.id)?.name.toLowerCase()}` : 'kid-toggle';
+      const cls = isActive ? `kid-toggle done-${btn.isParent ? 'parent' : kidClass(btn.id)}` : 'kid-toggle';
       const activeStyle = isActive ? 'background:#f0fdf4;border-color:#22c55e;color:#22c55e;' : '';
       return `<button class="kid-toggle" style="${activeStyle}"
                 data-tr-task="${task.id}" data-tr-step="${step}"
@@ -901,7 +905,7 @@ async function renderEarnings(el) {
   if (!data) return;
 
   const cards = data.summary.map(k => {
-    const color = k.name.toLowerCase() === 'kayden' ? 'var(--kayden)' : 'var(--monroe)';
+    const color = `var(--${kidClass(k.id)})`;
     return `
       <div class="earnings-card">
         <div class="earnings-name" style="color:${color}">${k.name}</div>

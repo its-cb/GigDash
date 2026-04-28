@@ -17,12 +17,12 @@
       --green-dim:   #0d2b1a;
       --gold:        #f59e0b;
       --gold-dim:    #2d1f06;
-      --kayden:      #3b82f6;
-      --kayden-glow: #1d4ed8;
-      --kayden-dim:  #0c1e3d;
-      --monroe:      #ec4899;
-      --monroe-glow: #be185d;
-      --monroe-dim:  #3b0e24;
+      --kid1:        #3b82f6;
+      --kid1-glow:   #1d4ed8;
+      --kid1-dim:    #0c1e3d;
+      --kid2:        #ec4899;
+      --kid2-glow:   #be185d;
+      --kid2-dim:    #3b0e24;
       --lock:        #374151;
     }
 
@@ -156,8 +156,8 @@
       border-top: 4px solid transparent;
     }
 
-    .kid-col.kayden { border-top-color: var(--kayden); border-right: 1px solid var(--border); }
-    .kid-col.monroe { border-top-color: var(--monroe); }
+    .kid-col.kid-1 { border-top-color: var(--kid1); border-right: 1px solid var(--border); }
+    .kid-col.kid-2 { border-top-color: var(--kid2); }
 
     /* ── KID HEADER ─────────────────────────────────────────── */
     .kid-header {
@@ -175,8 +175,8 @@
       letter-spacing: -0.03em;
     }
 
-    .kayden .kid-name { color: var(--kayden); }
-    .monroe .kid-name { color: var(--monroe); }
+    .kid-1 .kid-name { color: var(--kid1); }
+    .kid-2 .kid-name { color: var(--kid2); }
 
     .piggy-bank {
       display: flex;
@@ -247,8 +247,8 @@
       border-radius: 2px;
       transition: width 0.4s ease;
     }
-    .kayden .progress-fill { background: var(--kayden); }
-    .monroe .progress-fill { background: var(--monroe); }
+    .kid-1 .progress-fill { background: var(--kid1); }
+    .kid-2 .progress-fill { background: var(--kid2); }
 
     /* ── TASK ITEMS ─────────────────────────────────────────── */
     .task-list { display: flex; flex-direction: column; gap: 7px; overflow: hidden; }
@@ -375,8 +375,8 @@
       return '$' + parseFloat(n).toFixed(2);
     }
 
-    function renderKid(kid, allKids) {
-      const cls      = kid.name.toLowerCase();
+    function renderKid(kid, allKids, idx) {
+      const cls      = `kid-${idx + 1}`;
       const done     = kid.dailyTasks.filter(t => t.completed).length;
       const total    = kid.dailyTasks.length;
       const pct      = total ? Math.round((done / total) * 100) : 0;
@@ -484,7 +484,7 @@
     function render(data) {
       renderTrackingBar(data);
       document.getElementById('columns').innerHTML =
-        data.kids.map(kid => renderKid(kid, data.kids)).join('');
+        data.kids.map((kid, idx) => renderKid(kid, data.kids, idx)).join('');
     }
 
     // ── Fetch & poll ─────────────────────────────────────────
