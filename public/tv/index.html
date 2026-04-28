@@ -374,7 +374,19 @@
           </div>
           <div class="task-list">${gigItems}</div>
         </div>
-      ` : '';
+      ` : `
+        <div class="section gig-section">
+          <div class="section-header">
+            <span class="section-title">Gig Tasks</span>
+            <span class="badge locked">Locked</span>
+          </div>
+          <div class="locked-panel">
+            <div class="lock-emoji">🔒</div>
+            <div class="lock-text">Finish daily tasks to unlock</div>
+            <div class="lock-sub">${done} of ${total} complete</div>
+          </div>
+        </div>
+      `;
 
       return `
         <div class="kid-col ${cls}">
