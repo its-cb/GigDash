@@ -50,7 +50,7 @@ apt-get install -y -qq \
 # Node.js 20 LTS via NodeSource
 if ! command -v node &>/dev/null; then
     echo "  Installing Node.js 20..."
-    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - -qq
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
     apt-get install -y -qq nodejs
 fi
 echo "  Node $(node -v) ready."
