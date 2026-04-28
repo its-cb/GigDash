@@ -147,8 +147,14 @@ fi
 
 # Seed the database on first install
 if [ ! -f $GD_DIR/gigdash.db ]; then
+    echo ""
+    echo "  ── First-time setup ─────────────────────────────────"
+    read -p "  Kid 1 name: " KID1_NAME
+    read -p "  Kid 2 name: " KID2_NAME
+    KID1_NAME=${KID1_NAME:-Kid1}
+    KID2_NAME=${KID2_NAME:-Kid2}
     echo "  Seeding database..."
-    sudo -u $GD_USER node $GD_DIR/db/seed.js
+    sudo -u $GD_USER KID1_NAME="$KID1_NAME" KID2_NAME="$KID2_NAME" node $GD_DIR/db/seed.js
 fi
 
 # ── 8. Systemd service ───────────────────────────────────────

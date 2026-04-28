@@ -71,6 +71,51 @@ See [SETUP.md](SETUP.md) for full Debian deployment instructions including syste
 
 ---
 
+## Managing kids
+
+Kid names are set once during first-time setup and stored in the database. To rename a kid or add one after the fact, use the commands below.
+
+### Rename a kid
+
+**Docker:**
+```bash
+docker exec gigdash node -e "
+const { initDatabase, getDb } = require('./db/database');
+initDatabase();
+getDb().prepare('UPDATE kids SET name = ? WHERE id = ?').run('NewName', 1);
+console.log('Done — refresh the TV dashboard');
+"
+```
+
+**Systemd (non-Docker):**
+```bash
+cd /opt/gigdash
+node -e "
+const { initDatabase, getDb } = require('./db/database');
+initDatabase();
+getDb().prepare('UPDATE kids SET name = ? WHERE id = ?').run('NewName', 1);
+console.log('Done — refresh the TV dashboard');
+"
+```
+
+Replace `'NewName'` with the new name and `1` with the kid's ID (`1` = first kid, `2` = second kid).
+
+### Add a kid
+
+```bash
+# Docker
+docker exec gigdash node -e "
+const { initDatabase, getDb } = require('./db/database');
+initDatabase();
+getDb().prepare('INSERT INTO kids (name, color) VALUES (?, ?)').run('NewKid', '#10b981');
+console.log('Done');
+"
+```
+
+> **Note:** The TV dashboard uses a two-column layout. Adding a third kid will display correctly but may feel cramped — a three-column layout update would be needed for the best experience.
+
+---
+
 ## Tech stack
 
 - **Backend** — Node.js, Express, SQLite (better-sqlite3)

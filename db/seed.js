@@ -10,10 +10,12 @@ if (count > 0) {
   process.exit(0);
 }
 
-// Kids
+// Kids — names can be passed via env vars (set by setup.sh on first deploy)
+const kid1Name = process.env.KID1_NAME || 'Kid 1';
+const kid2Name = process.env.KID2_NAME || 'Kid 2';
 const addKid = db.prepare('INSERT INTO kids (name, color) VALUES (?, ?)');
-const kayden = addKid.run('Kayden', '#3b82f6');
-const monroe  = addKid.run('Monroe',  '#ec4899');
+addKid.run(kid1Name, '#3b82f6');
+addKid.run(kid2Name, '#ec4899');
 
 // Shared daily expectations
 const addDaily = db.prepare('INSERT INTO daily_tasks (title, kid_id, sort_order) VALUES (?, NULL, ?)');
@@ -44,5 +46,5 @@ addParent.run('dad', hash);
 addParent.run('mom', hash);
 
 console.log('✅  Database seeded!');
-console.log('    Kids:    Kayden, Monroe');
+console.log(`    Kids:    ${kid1Name}, ${kid2Name}`);
 console.log('    Logins:  dad / parent123   |   mom / parent123');
