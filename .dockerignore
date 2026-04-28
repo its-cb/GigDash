@@ -1,0 +1,5 @@
+node_modules
+gigdash.db
+.env
+.git
+*.zip

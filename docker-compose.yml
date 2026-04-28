@@ -1,0 +1,16 @@
+services:
+  gigdash:
+    image: itscb/gigdash:latest
+    container_name: gigdash
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - gigdash-data:/app/data
+    environment:
+      - PORT=3000
+      - DB_PATH=/app/data/gigdash.db
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
+
+volumes:
+  gigdash-data:
