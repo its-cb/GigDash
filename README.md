@@ -61,15 +61,40 @@ The database is stored in a Docker volume (`gigdash-data`) and survives updates.
 
 ## Running without Docker
 
-Requires Node.js 20+.
+### Deploy to a Debian/Linux box from your Mac (recommended)
 
+This is the simplest path for a dedicated device — a mini PC, NUC, or anything connected to a TV.
+
+**1. Clone the repo on your Mac**
 ```bash
-npm install
-npm run seed
-npm start
+git clone https://github.com/itscb/gigdash.git
+cd gigdash
 ```
 
-See [SETUP.md](SETUP.md) for full Debian deployment instructions including systemd and kiosk mode.
+**2. Add a shell alias for easy deploys**
+```bash
+echo 'alias deploygigdash="bash ~/path/to/gigdash/deploy.sh"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+**3. Install Debian 13 on your device** with only the SSH server option selected. Make sure it's on the same network as your Mac.
+
+**4. Run the deploy script**
+```bash
+deploygigdash <device-ip> <username>
+# Example: deploygigdash 192.168.1.50 gigdash
+```
+
+This zips the project, transfers it to the device, and runs the full setup automatically. On first install it will ask for your kids' names, then handle everything else — Node.js, dependencies, systemd service, and Chromium kiosk mode.
+
+**5. On subsequent updates**, just pull and redeploy:
+```bash
+git pull && deploygigdash <device-ip> <username>
+```
+
+The database is preserved between deploys — only code files are updated.
+
+See [SETUP.md](SETUP.md) for full details including systemd configuration, kiosk mode, and optional nginx setup.
 
 ---
 
