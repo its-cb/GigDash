@@ -18,6 +18,8 @@ A household chore and earnings tracker for kids. Built for a TV-connected displa
 
 ## Running with Docker
 
+> **Note:** Docker support is included but has not been end-to-end tested. If you run into issues please open a GitHub issue.
+
 ### Quick start
 
 ```bash
