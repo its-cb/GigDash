@@ -374,19 +374,7 @@
           </div>
           <div class="task-list">${gigItems}</div>
         </div>
-      ` : `
-        <div class="section gig-section">
-          <div class="section-header">
-            <span class="section-title">Gig Tasks</span>
-            <span class="badge locked">Locked</span>
-          </div>
-          <div class="locked-panel">
-            <div class="lock-emoji">🔒</div>
-            <div class="lock-text">Finish daily tasks to unlock</div>
-            <div class="lock-sub">${done} of ${total} complete</div>
-          </div>
-        </div>
-      `;
+      ` : '';
 
       return `
         <div class="kid-col ${cls}">
@@ -457,8 +445,20 @@
       }
     }
 
+    // Push signal — triggers immediate refresh when parent hits "Push to TV"
+    let lastKnownPush = 0;
+    let pushReady = false;
+    async function checkPush() {
+      try {
+        const { ts } = await fetch('/api/push').then(r => r.json());
+        if (!pushReady) { lastKnownPush = ts; pushReady = true; return; }
+        if (ts > lastKnownPush) { lastKnownPush = ts; fetchData(); }
+      } catch {}
+    }
+
     fetchData();
-    setInterval(fetchData, 15000); // refresh every 15 s
+    setInterval(fetchData, 30000);  // background refresh every 30 s
+    setInterval(checkPush, 3000);   // push signal check every 3 s
   </script>
 </body>
 </html>

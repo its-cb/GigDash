@@ -385,6 +385,23 @@
     .loading { color: var(--muted); text-align: center; padding: 32px; font-size: 0.95rem; }
     .empty   { color: var(--muted); text-align: center; padding: 20px 16px; font-size: 0.9rem; }
 
+    /* push button */
+    #push-btn {
+      position: fixed;
+      bottom: 80px;
+      right: 20px;
+      background: var(--primary);
+      color: #fff;
+      border-radius: 50px;
+      padding: 12px 18px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      box-shadow: 0 4px 16px rgba(59,130,246,.35);
+      z-index: 50;
+      white-space: nowrap;
+    }
+    #push-btn.sent { background: var(--green); box-shadow: 0 4px 16px rgba(34,197,94,.35); }
+
     /* toast */
     #toast {
       position: fixed;
@@ -445,6 +462,7 @@
   </div>
 </div>
 
+<button id="push-btn" class="hidden">📺 Push to TV</button>
 <div id="toast"></div>
 
 <script>
@@ -482,13 +500,6 @@ async function api(method, path, body) {
 function showLogin() {
   $('login-view').style.display = 'flex';
   $('app-view').style.display   = 'none';
-}
-
-function showApp() {
-  $('login-view').style.display  = 'none';
-  $('app-view').style.display    = 'flex';
-  $('user-label').textContent    = username;
-  loadKids().then(() => renderTab(activeTab));
 }
 
 function doLogout() {
@@ -918,6 +929,27 @@ async function renderEarnings(el) {
       }
     });
   });
+}
+
+// ── Push to TV ───────────────────────────────────────────────
+const pushBtn = $('push-btn');
+pushBtn.addEventListener('click', async () => {
+  pushBtn.textContent = '📺 Pushing…';
+  pushBtn.classList.add('sent');
+  await api('POST', '/push');
+  pushBtn.textContent = '✓ TV Updated';
+  setTimeout(() => {
+    pushBtn.textContent = '📺 Push to TV';
+    pushBtn.classList.remove('sent');
+  }, 2500);
+});
+
+function showApp() {
+  $('login-view').style.display  = 'none';
+  $('app-view').style.display    = 'flex';
+  $('user-label').textContent    = username;
+  pushBtn.classList.remove('hidden');
+  loadKids().then(() => renderTab(activeTab));
 }
 
 // ── Boot ─────────────────────────────────────────────────────

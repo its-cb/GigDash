@@ -3,7 +3,10 @@ const { getDb } = require('../db/database');
 
 const router = express.Router();
 
-const today = () => new Date().toISOString().split('T')[0];
+const today = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+};
 
 // Public endpoint — TV dashboard polls this
 router.get('/', (req, res) => {
@@ -30,8 +33,8 @@ router.get('/', (req, res) => {
       WITH cutoffs AS (
         SELECT id,
           CASE type
-            WHEN 'weekly'   THEN date('now', '-7 days')
-            WHEN 'biweekly' THEN date('now', '-14 days')
+            WHEN 'weekly'   THEN date('now', 'localtime', '-7 days')
+            WHEN 'biweekly' THEN date('now', 'localtime', '-14 days')
             ELSE '0000-01-01'
           END AS cutoff
         FROM gig_tasks

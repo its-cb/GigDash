@@ -29,6 +29,14 @@ app.use('/api/auth',      require('./routes/auth'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/parent',    require('./middleware/auth'), require('./routes/parent'));
 
+// Push signal — lets the parent app trigger an immediate TV refresh
+let lastPush = Date.now();
+app.get( '/api/push', (_req, res) => res.json({ ts: lastPush }));
+app.post('/api/push', require('./middleware/auth'), (_req, res) => {
+  lastPush = Date.now();
+  res.json({ ts: lastPush });
+});
+
 initDatabase();
 
 app.listen(PORT, '0.0.0.0', () => {
