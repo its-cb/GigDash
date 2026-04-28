@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>GigDashboard</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #080d14;
+      --surface:     #0f1724;
+      --surface2:    #1a2233;
+      --border:      #1e2d45;
+      --text:        #e8f0fe;
+      --muted:       #5a7099;
+      --green:       #22c55e;
+      --green-dim:   #0d2b1a;
+      --gold:        #f59e0b;
+      --gold-dim:    #2d1f06;
+      --kayden:      #3b82f6;
+      --kayden-glow: #1d4ed8;
+      --kayden-dim:  #0c1e3d;
+      --monroe:      #ec4899;
+      --monroe-glow: #be185d;
+      --monroe-dim:  #3b0e24;
+      --lock:        #374151;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      overflow: hidden;
+    }
+
+    /* ── HEADER ─────────────────────────────────────────────── */
+    #header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 48px;
+      height: 72px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .logo {
+      font-size: 1.7rem;
+      font-weight: 800;
+      color: var(--gold);
+      letter-spacing: -0.02em;
+    }
+
+    #date-el {
+      font-size: 1.1rem;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    #clock-el {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+      min-width: 100px;
+      text-align: right;
+    }
+
+    /* ── COLUMNS ────────────────────────────────────────────── */
+    #columns {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      height: calc(100vh - 72px);
+    }
+
+    .kid-col {
+      padding: 28px 36px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      overflow: hidden;
+      border-top: 4px solid transparent;
+    }
+
+    .kid-col.kayden { border-top-color: var(--kayden); border-right: 1px solid var(--border); }
+    .kid-col.monroe { border-top-color: var(--monroe); }
+
+    /* ── KID HEADER ─────────────────────────────────────────── */
+    .kid-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .kid-name {
+      font-size: 2.4rem;
+      font-weight: 900;
+      letter-spacing: -0.03em;
+    }
+
+    .kayden .kid-name { color: var(--kayden); }
+    .monroe .kid-name { color: var(--monroe); }
+
+    .piggy-bank {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--gold-dim);
+      border: 1px solid var(--gold);
+      border-radius: 14px;
+      padding: 10px 20px;
+    }
+
+    .piggy-icon { font-size: 1.8rem; }
+
+    .piggy-amount {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--gold);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ── SECTIONS ───────────────────────────────────────────── */
+    .section { display: flex; flex-direction: column; gap: 8px; overflow: hidden; flex-shrink: 0; }
+    .section.gig-section { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+
+    .section-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+    }
+
+    .badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 2px 10px;
+      border-radius: 20px;
+    }
+
+    .badge.unlocked {
+      background: var(--green-dim);
+      color: var(--green);
+      border: 1px solid var(--green);
+    }
+
+    .badge.locked {
+      background: #111;
+      color: var(--lock);
+      border: 1px solid var(--lock);
+    }
+
+    /* progress bar */
+    .progress-wrap {
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      margin-bottom: 8px;
+    }
+    .progress-fill {
+      height: 100%;
+      border-radius: 2px;
+      transition: width 0.4s ease;
+    }
+    .kayden .progress-fill { background: var(--kayden); }
+    .monroe .progress-fill { background: var(--monroe); }
+
+    /* ── TASK ITEMS ─────────────────────────────────────────── */
+    .task-list { display: flex; flex-direction: column; gap: 7px; overflow: hidden; }
+    .gig-section .task-list { flex: 1; overflow-y: auto; gap: 7px; }
+    .gig-section .task-list::-webkit-scrollbar { width: 4px; }
+    .gig-section .task-list::-webkit-scrollbar-track { background: transparent; }
+    .gig-section .task-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .task-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 11px 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 1.05rem;
+      font-weight: 500;
+      transition: border-color 0.2s, opacity 0.2s;
+    }
+
+    .task-item.done {
+      border-color: var(--green);
+      background: var(--green-dim);
+    }
+
+    .task-item.done .task-label {
+      text-decoration: line-through;
+      color: var(--muted);
+    }
+
+    .task-item.gig-done {
+      opacity: 0.55;
+      border-color: var(--green);
+    }
+
+    .check-circle {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .task-item.done .check-circle,
+    .task-item.gig-done .check-circle {
+      background: var(--green);
+      border-color: var(--green);
+      color: #fff;
+    }
+
+    .gig-value {
+      margin-left: auto;
+      font-weight: 800;
+      color: var(--gold);
+      font-size: 1.05rem;
+      flex-shrink: 0;
+    }
+
+    .task-item.gig-done .gig-value { color: var(--muted); }
+
+    /* locked gig panel */
+    .locked-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      background: var(--surface);
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+      color: var(--muted);
+    }
+
+    .lock-emoji { font-size: 3rem; }
+    .lock-text  { font-size: 1rem; font-weight: 600; }
+    .lock-sub   { font-size: 0.85rem; color: var(--lock); }
+
+    /* ── REFRESH INDICATOR ──────────────────────────────────── */
+    #refresh-dot {
+      position: fixed;
+      bottom: 16px;
+      right: 20px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--muted);
+      opacity: 0.4;
+      transition: background 0.2s, opacity 0.2s;
+    }
+    #refresh-dot.active { background: var(--green); opacity: 1; }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <div class="logo">💰 GigDashboard</div>
+    <div id="date-el"></div>
+    <div id="clock-el"></div>
+  </div>
+  <div id="columns"></div>
+  <div id="refresh-dot"></div>
+
+  <script>
+    // ── Clock ────────────────────────────────────────────────
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('clock-el').textContent =
+        now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+      document.getElementById('date-el').textContent =
+        now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    // ── Render ───────────────────────────────────────────────
+    function fmt(n) {
+      return '$' + parseFloat(n).toFixed(2);
+    }
+
+    function renderKid(kid) {
+      const cls      = kid.name.toLowerCase();
+      const done     = kid.dailyTasks.filter(t => t.completed).length;
+      const total    = kid.dailyTasks.length;
+      const pct      = total ? Math.round((done / total) * 100) : 0;
+      const unlocked = kid.allDailyDone;
+
+      const dailyItems = kid.dailyTasks.map(t => `
+        <div class="task-item ${t.completed ? 'done' : ''}">
+          <div class="check-circle">${t.completed ? '✓' : ''}</div>
+          <span class="task-label">${t.title}</span>
+        </div>
+      `).join('');
+
+      const gigItems = kid.gigTasks.length === 0
+        ? '<div class="task-item"><span class="task-label" style="color:var(--muted)">No gig tasks assigned</span></div>'
+        : kid.gigTasks.map(t => `
+          <div class="task-item ${t.completed_today ? 'gig-done' : ''}">
+            <div class="check-circle">${t.completed_today ? '✓' : ''}</div>
+            <span class="task-label">${t.title}</span>
+            <span class="gig-value">${fmt(t.value)}</span>
+          </div>
+        `).join('');
+
+      const gigSection = unlocked ? `
+        <div class="section gig-section">
+          <div class="section-header">
+            <span class="section-title">Gig Tasks</span>
+            <span class="badge unlocked">🔓 Unlocked</span>
+          </div>
+          <div class="task-list">${gigItems}</div>
+        </div>
+      ` : `
+        <div class="section gig-section">
+          <div class="section-header">
+            <span class="section-title">Gig Tasks</span>
+            <span class="badge locked">Locked</span>
+          </div>
+          <div class="locked-panel">
+            <div class="lock-emoji">🔒</div>
+            <div class="lock-text">Finish daily tasks to unlock</div>
+            <div class="lock-sub">${done} of ${total} complete</div>
+          </div>
+        </div>
+      `;
+
+      return `
+        <div class="kid-col ${cls}">
+          <div class="kid-header">
+            <div class="kid-name">${kid.name}</div>
+            <div class="piggy-bank">
+              <span class="piggy-icon">🐷</span>
+              <span class="piggy-amount">${fmt(kid.totalEarnings)}</span>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-header">
+              <span class="section-title">Daily Expectations</span>
+              <span style="font-size:0.8rem;color:var(--muted)">${done}/${total}</span>
+            </div>
+            <div class="progress-wrap">
+              <div class="progress-fill" style="width:${pct}%"></div>
+            </div>
+            <div class="task-list">${dailyItems}</div>
+          </div>
+
+          ${gigSection}
+        </div>
+      `;
+    }
+
+    function render(data) {
+      document.getElementById('columns').innerHTML =
+        data.kids.map(renderKid).join('');
+    }
+
+    // ── Fetch & poll ─────────────────────────────────────────
+    const dot = document.getElementById('refresh-dot');
+
+    async function fetchData() {
+      try {
+        const res  = await fetch('/api/dashboard');
+        const data = await res.json();
+        render(data);
+        dot.classList.add('active');
+        setTimeout(() => dot.classList.remove('active'), 600);
+      } catch (e) {
+        console.error('Dashboard fetch failed', e);
+      }
+    }
+
+    fetchData();
+    setInterval(fetchData, 15000); // refresh every 15 s
+  </script>
+</body>
+</html>

@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>GigDashboard — Parent</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #f0f4f8;
+      --surface: #ffffff;
+      --border:  #e2e8f0;
+      --text:    #1a202c;
+      --muted:   #718096;
+      --primary: #3b82f6;
+      --primary-dark: #2563eb;
+      --green:   #22c55e;
+      --green-bg:#f0fdf4;
+      --red:     #ef4444;
+      --red-bg:  #fff5f5;
+      --gold:    #f59e0b;
+      --gold-bg: #fffbeb;
+      --kayden:  #3b82f6;
+      --monroe:  #ec4899;
+      --radius:  12px;
+      --shadow:  0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      min-height: 100dvh;
+      padding-bottom: env(safe-area-inset-bottom, 0);
+    }
+
+    /* ── SHARED ─────────────────────────────────────────────── */
+    .hidden { display: none !important; }
+
+    button {
+      cursor: pointer;
+      border: none;
+      font-family: inherit;
+      font-size: 1rem;
+      border-radius: 8px;
+      transition: background 0.15s, opacity 0.15s;
+    }
+    button:active { opacity: 0.8; }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+      padding: 13px 20px;
+      font-weight: 600;
+      width: 100%;
+    }
+    .btn-primary:hover { background: var(--primary-dark); }
+
+    .btn-sm {
+      padding: 6px 14px;
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+
+    .btn-green  { background: var(--green-bg); color: var(--green); border: 1px solid var(--green); }
+    .btn-red    { background: var(--red-bg);   color: var(--red);   border: 1px solid var(--red);  }
+    .btn-gold   { background: var(--gold-bg);  color: var(--gold);  border: 1px solid var(--gold); }
+    .btn-gray   { background: var(--border);   color: var(--muted);  }
+
+    input, select {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 1rem;
+      background: var(--surface);
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    input:focus, select:focus { border-color: var(--primary); }
+
+    .error-msg {
+      color: var(--red);
+      font-size: 0.88rem;
+      margin-top: 4px;
+      min-height: 20px;
+    }
+
+    /* ── LOGIN VIEW ─────────────────────────────────────────── */
+    #login-view {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100dvh;
+      padding: 24px;
+    }
+
+    .login-card {
+      background: var(--surface);
+      border-radius: 20px;
+      padding: 40px 32px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 8px 40px rgba(0,0,0,.1);
+    }
+
+    .login-logo {
+      font-size: 2rem;
+      font-weight: 900;
+      color: var(--gold);
+      margin-bottom: 6px;
+      letter-spacing: -0.02em;
+    }
+
+    .login-sub {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin-bottom: 28px;
+    }
+
+    .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+    .form-label { font-size: 0.88rem; font-weight: 600; color: var(--muted); }
+
+    /* ── APP VIEW ───────────────────────────────────────────── */
+    #app-view { display: none; flex-direction: column; min-height: 100dvh; }
+
+    /* header */
+    #app-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    #app-header .logo { font-size: 1.2rem; font-weight: 800; color: var(--gold); }
+    #app-header .user { font-size: 0.85rem; color: var(--muted); }
+
+    #logout-btn {
+      background: var(--border);
+      color: var(--muted);
+      padding: 7px 14px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      border-radius: 8px;
+    }
+
+    /* tabs */
+    #tab-bar {
+      display: flex;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    #tab-bar::-webkit-scrollbar { display: none; }
+
+    .tab-btn {
+      flex: 1;
+      padding: 14px 10px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--muted);
+      background: none;
+      border-radius: 0;
+      border-bottom: 3px solid transparent;
+      white-space: nowrap;
+      min-width: 100px;
+    }
+    .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+    /* content area */
+    #tab-content { flex: 1; padding: 20px 16px; max-width: 680px; margin: 0 auto; width: 100%; }
+
+    /* ── KID FILTER ─────────────────────────────────────────── */
+    .kid-filter {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .kid-chip {
+      flex: 1;
+      padding: 10px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      border-radius: 10px;
+      border: 2px solid var(--border);
+      background: var(--surface);
+      color: var(--muted);
+      text-align: center;
+      transition: all 0.15s;
+    }
+    .kid-chip.active-kayden { border-color: var(--kayden); background: #eff6ff; color: var(--kayden); }
+    .kid-chip.active-monroe { border-color: var(--monroe); background: #fdf2f8; color: var(--monroe); }
+
+    /* ── CARDS ──────────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      margin-bottom: 12px;
+      overflow: hidden;
+    }
+
+    .card-section-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      padding: 12px 16px 0;
+    }
+
+    /* task row */
+    .task-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 13px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .task-row:last-child { border-bottom: none; }
+
+    .task-row-label {
+      flex: 1;
+      font-size: 0.95rem;
+      font-weight: 500;
+    }
+
+    .task-row-meta {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .task-row-value {
+      font-weight: 700;
+      color: var(--gold);
+      font-size: 0.95rem;
+      margin-right: 4px;
+      flex-shrink: 0;
+    }
+
+    .kid-toggles {
+      display: flex;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .kid-toggle {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      border: 2px solid var(--border);
+      background: var(--surface);
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s;
+      padding: 0;
+    }
+
+    .kid-toggle.done-kayden { background: #eff6ff; border-color: var(--kayden); color: var(--kayden); }
+    .kid-toggle.done-monroe { background: #fdf2f8; border-color: var(--monroe); color: var(--monroe); }
+
+    .delete-btn {
+      width: 30px;
+      height: 30px;
+      border-radius: 6px;
+      background: none;
+      color: #cbd5e0;
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      padding: 0;
+    }
+    .delete-btn:hover { background: var(--red-bg); color: var(--red); }
+
+    /* add task form */
+    .add-form {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 14px 16px;
+      background: var(--bg);
+      border-top: 1px solid var(--border);
+    }
+
+    .add-form-row { display: flex; gap: 8px; }
+
+    .add-form input[type="number"] { max-width: 90px; }
+
+    .add-form .btn-primary { width: auto; padding: 12px 20px; font-size: 0.9rem; }
+
+    /* ── EARNINGS VIEW ──────────────────────────────────────── */
+    .earnings-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 20px;
+      margin-bottom: 12px;
+    }
+
+    .earnings-name {
+      font-size: 1.1rem;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+
+    .earnings-total {
+      font-size: 2.2rem;
+      font-weight: 900;
+      color: var(--gold);
+      margin-bottom: 12px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .cashout-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .cashout-note { font-size: 0.82rem; color: var(--muted); }
+
+    /* loading / empty states */
+    .loading { color: var(--muted); text-align: center; padding: 32px; font-size: 0.95rem; }
+    .empty   { color: var(--muted); text-align: center; padding: 20px 16px; font-size: 0.9rem; }
+
+    /* toast */
+    #toast {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #1a202c;
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 30px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      z-index: 100;
+      transition: transform 0.25s ease;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+
+<!-- ── LOGIN ─────────────────────────────────────────────────── -->
+<div id="login-view">
+  <div class="login-card">
+    <div class="login-logo">💰 GigDashboard</div>
+    <div class="login-sub">Parent Control Panel</div>
+    <div class="form-group">
+      <label class="form-label" for="username">Username</label>
+      <input id="username" type="text" placeholder="dad or mom" autocomplete="username">
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="password">Password</label>
+      <input id="password" type="password" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <div class="error-msg" id="login-error"></div>
+    <button class="btn-primary" id="login-btn" style="margin-top:8px">Sign In</button>
+  </div>
+</div>
+
+<!-- ── APP ───────────────────────────────────────────────────── -->
+<div id="app-view">
+  <div id="app-header">
+    <div class="logo">💰 GigDashboard</div>
+    <span class="user" id="user-label"></span>
+    <button id="logout-btn">Log out</button>
+  </div>
+
+  <div id="tab-bar">
+    <button class="tab-btn active" data-tab="daily">Daily Tasks</button>
+    <button class="tab-btn"        data-tab="gigs">Gig Tasks</button>
+    <button class="tab-btn"        data-tab="earnings">Earnings</button>
+  </div>
+
+  <div id="tab-content">
+    <!-- filled by JS -->
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── State ────────────────────────────────────────────────────
+let token    = localStorage.getItem('gd_token')    || '';
+let username = localStorage.getItem('gd_username') || '';
+let kids     = [];
+let activeTab = 'daily';
+
+// ── Helpers ──────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const fmt = n => '$' + parseFloat(n).toFixed(2);
+
+function toast(msg) {
+  const el = $('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+async function api(method, path, body) {
+  const res = await fetch('/api' + path, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: 'Bearer ' + token } : {})
+    },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  if (res.status === 401) { doLogout(); return null; }
+  return res.json();
+}
+
+// ── Auth ─────────────────────────────────────────────────────
+function showLogin() {
+  $('login-view').style.display = 'flex';
+  $('app-view').style.display   = 'none';
+}
+
+function showApp() {
+  $('login-view').style.display  = 'none';
+  $('app-view').style.display    = 'flex';
+  $('user-label').textContent    = username;
+  loadKids().then(() => renderTab(activeTab));
+}
+
+function doLogout() {
+  token = username = '';
+  localStorage.removeItem('gd_token');
+  localStorage.removeItem('gd_username');
+  showLogin();
+}
+
+$('login-btn').addEventListener('click', async () => {
+  const u = $('username').value.trim();
+  const p = $('password').value;
+  if (!u || !p) { $('login-error').textContent = 'Please enter username and password'; return; }
+  $('login-error').textContent = '';
+  $('login-btn').textContent   = 'Signing in…';
+  const data = await api('POST', '/auth/login', { username: u, password: p })
+    .catch(() => null);
+  $('login-btn').textContent = 'Sign In';
+  if (!data || data.error) {
+    $('login-error').textContent = data?.error || 'Login failed';
+    return;
+  }
+  token = data.token; username = data.username;
+  localStorage.setItem('gd_token',    token);
+  localStorage.setItem('gd_username', username);
+  showApp();
+});
+
+$('password').addEventListener('keydown', e => { if (e.key === 'Enter') $('login-btn').click(); });
+
+$('logout-btn').addEventListener('click', doLogout);
+
+// ── Kids ─────────────────────────────────────────────────────
+async function loadKids() {
+  const data = await api('GET', '/parent/kids');
+  if (data) kids = data;
+}
+
+function kidName(id) {
+  const k = kids.find(k => k.id == id);
+  return k ? k.name : 'All';
+}
+
+// ── Tabs ─────────────────────────────────────────────────────
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeTab = btn.dataset.tab;
+    renderTab(activeTab);
+  });
+});
+
+function renderTab(tab) {
+  const el = $('tab-content');
+  el.innerHTML = '<div class="loading">Loading…</div>';
+  if (tab === 'daily')    renderDaily(el);
+  if (tab === 'gigs')     renderGigs(el);
+  if (tab === 'earnings') renderEarnings(el);
+}
+
+// ── DAILY TASKS ──────────────────────────────────────────────
+async function renderDaily(el) {
+  const tasks = await api('GET', '/parent/daily-tasks');
+  if (!tasks) return;
+
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  function completedBy(task) {
+    if (!task.completed_by) return [];
+    return task.completed_by.split(',').map(Number);
+  }
+
+  const rows = tasks.length === 0
+    ? '<div class="empty">No daily tasks yet — add one below.</div>'
+    : tasks.map(task => {
+        const cb  = completedBy(task);
+        const who = task.kid_id ? `<div class="task-row-meta">Only for ${kidName(task.kid_id)}</div>` : '';
+        const toggles = kids.map(k => {
+          const done = cb.includes(k.id);
+          const cls  = done ? `done-${k.name.toLowerCase()}` : '';
+          return `<button class="kid-toggle ${cls}"
+                    data-task="${task.id}" data-kid="${k.id}" data-done="${done ? '1' : '0'}"
+                    title="${k.name}">
+                    ${k.name.charAt(0)}
+                  </button>`;
+        }).join('');
+        return `
+          <div class="task-row" id="daily-row-${task.id}">
+            <div style="flex:1">
+              <div class="task-row-label">${task.title}</div>
+              ${who}
+            </div>
+            <div class="kid-toggles">${toggles}</div>
+            <button class="delete-btn" data-del-daily="${task.id}" title="Remove task">×</button>
+          </div>`;
+      }).join('');
+
+  const kidOptions = `
+    <option value="">Both kids</option>
+    ${kids.map(k => `<option value="${k.id}">${k.name} only</option>`).join('')}
+  `;
+
+  el.innerHTML = `
+    <div class="card">
+      <div class="card-section-title">Today — tap a name to toggle ✓</div>
+      ${rows}
+      <div class="add-form">
+        <div class="add-form-row">
+          <input type="text" id="daily-title" placeholder="New daily task…">
+          <select id="daily-kid">${kidOptions}</select>
+        </div>
+        <button class="btn-primary" id="daily-add-btn">+ Add Task</button>
+      </div>
+    </div>
+  `;
+
+  // Toggle daily completion
+  el.querySelectorAll('.kid-toggle').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const taskId   = btn.dataset.task;
+      const kidId    = btn.dataset.kid;
+      const wasDone  = btn.dataset.done === '1';
+      const kidName_ = kids.find(k => k.id == kidId)?.name.toLowerCase() || '';
+      btn.dataset.done = wasDone ? '0' : '1';
+      btn.className    = `kid-toggle${!wasDone ? ` done-${kidName_}` : ''}`;
+      await api('POST', `/parent/daily-tasks/${taskId}/complete`,
+        { kid_id: +kidId, completed: !wasDone, date: todayStr });
+      toast(!wasDone ? '✓ Marked complete' : 'Marked incomplete');
+    });
+  });
+
+  // Delete daily task
+  el.querySelectorAll('[data-del-daily]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Remove this daily task?')) return;
+      await api('DELETE', `/parent/daily-tasks/${btn.dataset.delDaily}`);
+      toast('Task removed');
+      renderTab('daily');
+    });
+  });
+
+  // Add daily task
+  $('daily-add-btn').addEventListener('click', async () => {
+    const title  = $('daily-title').value.trim();
+    const kid_id = $('daily-kid').value || null;
+    if (!title) return;
+    await api('POST', '/parent/daily-tasks', { title, kid_id: kid_id ? +kid_id : null });
+    toast('Daily task added');
+    renderTab('daily');
+  });
+}
+
+// ── GIG TASKS ────────────────────────────────────────────────
+async function renderGigs(el) {
+  const tasks = await api('GET', '/parent/gig-tasks');
+  if (!tasks) return;
+
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  function completedBy(task) {
+    if (!task.completed_by) return [];
+    return task.completed_by.split(',').map(Number);
+  }
+
+  const rows = tasks.length === 0
+    ? '<div class="empty">No gig tasks yet — add one below.</div>'
+    : tasks.map(task => {
+        const cb   = completedBy(task);
+        const who  = task.kid_id ? `<div class="task-row-meta">Only for ${kidName(task.kid_id)}</div>` : '';
+        const toggles = kids.map(k => {
+          const done = cb.includes(k.id);
+          const cls  = done ? `done-${k.name.toLowerCase()}` : '';
+          return `<button class="kid-toggle ${cls}"
+                    data-task="${task.id}" data-kid="${k.id}" data-done="${done ? '1' : '0'}"
+                    title="${k.name}">
+                    ${k.name.charAt(0)}
+                  </button>`;
+        }).join('');
+        return `
+          <div class="task-row" id="gig-row-${task.id}">
+            <div style="flex:1">
+              <div class="task-row-label">${task.title}</div>
+              ${who}
+            </div>
+            <span class="task-row-value">${fmt(task.value)}</span>
+            <div class="kid-toggles">${toggles}</div>
+            <button class="delete-btn" data-del-gig="${task.id}" title="Archive task">×</button>
+          </div>`;
+      }).join('');
+
+  const kidOptions = `
+    <option value="">Both kids</option>
+    ${kids.map(k => `<option value="${k.id}">${k.name} only</option>`).join('')}
+  `;
+
+  el.innerHTML = `
+    <div class="card">
+      <div class="card-section-title">Available today — tap a name to mark earned</div>
+      ${rows}
+      <div class="add-form">
+        <input type="text" id="gig-title" placeholder="New gig task…">
+        <div class="add-form-row">
+          <input type="number" id="gig-value" placeholder="$0.00" min="0.01" step="0.25">
+          <select id="gig-kid">${kidOptions}</select>
+          <button class="btn-primary" id="gig-add-btn">+ Add</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Toggle gig completion
+  el.querySelectorAll('.kid-toggle').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const taskId   = btn.dataset.task;
+      const kidId    = btn.dataset.kid;
+      const wasDone  = btn.dataset.done === '1';
+      const kidName_ = kids.find(k => k.id == kidId)?.name.toLowerCase() || '';
+      btn.dataset.done = wasDone ? '0' : '1';
+      btn.className    = `kid-toggle${!wasDone ? ` done-${kidName_}` : ''}`;
+      await api('POST', `/parent/gig-tasks/${taskId}/complete`,
+        { kid_id: +kidId, completed: !wasDone, date: todayStr });
+      const task    = tasks.find(t => t.id == taskId);
+      const earner  = kids.find(k => k.id == kidId)?.name;
+      toast(!wasDone ? `${earner} earned ${fmt(task?.value || 0)} 🎉` : 'Earning removed');
+    });
+  });
+
+  // Archive gig task
+  el.querySelectorAll('[data-del-gig]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Archive this gig task?')) return;
+      await api('DELETE', `/parent/gig-tasks/${btn.dataset.delGig}`);
+      toast('Task archived');
+      renderTab('gigs');
+    });
+  });
+
+  // Add gig task
+  $('gig-add-btn').addEventListener('click', async () => {
+    const title  = $('gig-title').value.trim();
+    const value  = parseFloat($('gig-value').value);
+    const kid_id = $('gig-kid').value || null;
+    if (!title || isNaN(value) || value <= 0) {
+      toast('Enter a title and a dollar value');
+      return;
+    }
+    await api('POST', '/parent/gig-tasks', { title, value, kid_id: kid_id ? +kid_id : null });
+    toast('Gig task added');
+    renderTab('gigs');
+  });
+}
+
+// ── EARNINGS ─────────────────────────────────────────────────
+async function renderEarnings(el) {
+  const data = await api('GET', '/parent/earnings');
+  if (!data) return;
+
+  const cards = data.summary.map(k => {
+    const color = k.name.toLowerCase() === 'kayden' ? 'var(--kayden)' : 'var(--monroe)';
+    return `
+      <div class="earnings-card">
+        <div class="earnings-name" style="color:${color}">${k.name}</div>
+        <div class="earnings-total">${fmt(k.total)}</div>
+        <div class="cashout-row">
+          <span class="cashout-note">${k.completions} tasks completed</span>
+          <button class="btn-sm btn-gold" data-cashout="${k.id}" data-name="${k.name}">
+            Cash Out 💸
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  el.innerHTML = cards || '<div class="loading">No data yet.</div>';
+
+  el.querySelectorAll('[data-cashout]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const name = btn.dataset.name;
+      if (!confirm(`Cash out all of ${name}'s earnings? This resets their piggy bank to $0.00.`)) return;
+      const res = await api('POST', `/parent/kids/${btn.dataset.cashout}/cashout`);
+      if (res?.ok) {
+        toast(`💸 ${name} cashed out ${fmt(res.cashedOut)}!`);
+        renderTab('earnings');
+      }
+    });
+  });
+}
+
+// ── Boot ─────────────────────────────────────────────────────
+if (token) { showApp(); } else { showLogin(); }
+</script>
+</body>
+</html>

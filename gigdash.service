@@ -1,0 +1,18 @@
+[Unit]
+Description=GigDashboard — Kids task & earnings tracker
+After=network.target
+
+[Service]
+Type=simple
+User=gigdash
+WorkingDirectory=/opt/gigdash
+ExecStart=/usr/bin/node server.js
+Restart=on-failure
+RestartSec=5
+Environment=NODE_ENV=production
+Environment=PORT=3000
+# Change this to a long random string in production:
+Environment=JWT_SECRET=CHANGE-THIS-TO-SOMETHING-RANDOM
+
+[Install]
+WantedBy=multi-user.target
