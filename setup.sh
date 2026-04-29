@@ -174,8 +174,10 @@ fi
 if [ ! -f $GD_DIR/gigdash.db ]; then
     echo ""
     echo "  ── First-time setup ─────────────────────────────────"
-    read -p "  Kid 1 name: " KID1_NAME
-    read -p "  Kid 2 name: " KID2_NAME
+    echo -n "  Kid 1 name: "
+    read KID1_NAME
+    echo -n "  Kid 2 name: "
+    read KID2_NAME
     KID1_NAME=${KID1_NAME:-Kid1}
     KID2_NAME=${KID2_NAME:-Kid2}
     echo "  Seeding database..."
@@ -214,8 +216,8 @@ echo "║           mom / parent123                 ║"
 echo "╚══════════════════════════════════════════╝"
 echo ""
 if [ "$NEEDS_REBOOT" = "true" ]; then
-    read -p "Reboot required. Reboot now? [y/N] " -n 1 -r
-    echo
+    echo -n "Reboot required. Reboot now? [y/N] "
+    read REPLY
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         reboot
     fi

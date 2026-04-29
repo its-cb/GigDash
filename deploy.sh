@@ -31,5 +31,6 @@ scp "$(dirname "$SCRIPT_DIR")/gigdash.zip" $USER@$IP:/tmp/
 echo "  Done."
 
 echo "→ Running setup on $IP..."
-ssh -t $USER@$IP "su - root -c 'apt-get install -y -qq unzip && cd /tmp && unzip -o gigdash.zip && cd GigDash && bash setup.sh'"
+SETUP_CMD="apt-get install -y -qq unzip && cd /tmp && unzip -o gigdash.zip && cd GigDash && bash setup.sh"
+ssh -t $USER@$IP "sudo bash -c '$SETUP_CMD' || su - root -c '$SETUP_CMD'"
 echo ""

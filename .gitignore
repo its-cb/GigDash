@@ -1,0 +1,6 @@
+node_modules/
+gigdash.db
+gigdash.zip
+.env
+*.DS_Store
+notes.local
