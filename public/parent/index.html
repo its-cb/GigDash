@@ -1259,25 +1259,35 @@ async function renderSettings(el) {
     $('apply-update-btn').textContent = 'Updating…';
     $('apply-update-btn').disabled = true;
     $('update-error').classList.add('hidden');
-    const res = await api('POST', '/admin/update/apply');
-    if (!res || res.error) {
-      $('update-error').textContent = [res?.error, res?.detail].filter(Boolean).join('\n\n') || 'Request failed — check server logs';
-      $('update-error').classList.remove('hidden');
-      $('apply-update-btn').textContent = 'Apply Update & Restart';
-      $('apply-update-btn').disabled = false;
-      return;
+
+    function startCountdown() {
+      $('apply-update-btn').classList.add('hidden');
+      $('update-changes').classList.add('hidden');
+      let secs = 10;
+      const tick = () => {
+        $('update-status').textContent = `✓ Updated — reloading in ${secs}s…`;
+        $('update-status').style.color = 'var(--green)';
+        if (secs-- > 0) setTimeout(tick, 1000);
+        else location.reload();
+      };
+      tick();
     }
-    if (res?.upToDate) { toast('Already up to date'); return; }
-    $('apply-update-btn').classList.add('hidden');
-    $('update-changes').classList.add('hidden');
-    let secs = 8;
-    const tick = () => {
-      $('update-status').textContent = `✓ Updated — reloading in ${secs}s…`;
-      $('update-status').style.color = 'var(--green)';
-      if (secs-- > 0) setTimeout(tick, 1000);
-      else location.reload();
-    };
-    tick();
+
+    try {
+      const res = await api('POST', '/admin/update/apply');
+      if (res?.upToDate) { toast('Already up to date'); $('apply-update-btn').disabled = false; $('apply-update-btn').textContent = 'Apply Update & Restart'; return; }
+      if (!res || res.error) {
+        $('update-error').textContent = [res?.error, res?.detail].filter(Boolean).join('\n\n') || 'Request failed — check server logs';
+        $('update-error').classList.remove('hidden');
+        $('apply-update-btn').textContent = 'Apply Update & Restart';
+        $('apply-update-btn').disabled = false;
+        return;
+      }
+      startCountdown();
+    } catch {
+      // Network drop = service restarted mid-response = expected
+      startCountdown();
+    }
   });
 
   // Auto-check on open
