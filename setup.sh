@@ -147,7 +147,7 @@ if [ ! -d "$GD_DIR/.git" ]; then
     if [ $GIT_EXIT -eq 0 ]; then
         mv /tmp/gd-setup/.git $GD_DIR/.git
         rm -rf /tmp/gd-setup
-        git -C $GD_DIR reset HEAD -q 2>/dev/null || true
+        git -C $GD_DIR reset --hard HEAD -q 2>/dev/null || true
         echo "  Git ready — update button enabled."
     else
         echo "  Git clone failed (exit $GIT_EXIT) — update button unavailable."

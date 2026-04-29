@@ -65,7 +65,7 @@ app.post('/api/admin/update/apply', require('./middleware/auth'), (_req, res) =>
     gitExec('git fetch origin main -q');
     const changes = gitExec('git log HEAD..origin/main --oneline');
     if (!changes) return res.json({ upToDate: true });
-    gitExec('git pull origin main -q');
+    gitExec('git reset --hard origin/main -q');
     execSync('npm install --omit=dev -q', { cwd: __dirname, timeout: 120000 });
     res.json({ ok: true, changes });
     // Restart after response is sent
@@ -73,7 +73,10 @@ app.post('/api/admin/update/apply', require('./middleware/auth'), (_req, res) =>
       try { execSync('sudo systemctl restart gigdash'); } catch {}
     }, 800);
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    res.status(500).json({
+      error: e.message,
+      detail: (e.stderr || e.stdout || '').toString().trim()
+    });
   }
 });
 
