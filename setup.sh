@@ -60,11 +60,12 @@ echo "[3/8] Creating gigdash user..."
 if ! id "$GD_USER" &>/dev/null; then
     useradd -m -s /bin/bash "$GD_USER"
     usermod -aG video,audio,input "$GD_USER"
-    printf '%s ALL=(ALL) NOPASSWD: /usr/sbin/reboot, /usr/sbin/shutdown\nDefaults:%s !requiretty\n' \
-        "$GD_USER" "$GD_USER" > /etc/sudoers.d/gigdash
-    chmod 440 /etc/sudoers.d/gigdash
     NEEDS_REBOOT=true
 fi
+# Always write sudoers (covers fresh installs and updates)
+printf '%s ALL=(ALL) NOPASSWD: /usr/sbin/reboot, /usr/sbin/shutdown, /usr/bin/systemctl restart gigdash\nDefaults:%s !requiretty\n' \
+    "$GD_USER" "$GD_USER" > /etc/sudoers.d/gigdash
+chmod 440 /etc/sudoers.d/gigdash
 
 # ── 4. Auto-login on tty1 ────────────────────────────────────
 echo "[4/8] Configuring auto-login..."
@@ -126,10 +127,34 @@ chown -R $GD_USER:$GD_USER /home/$GD_USER/.config
 
 # ── 7. Install app ───────────────────────────────────────────
 echo "[7/8] Installing GigDashboard app..."
-mkdir -p $GD_DIR
-# Copy all project files (setup.sh runs from the unzipped GigDash/ folder)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Always copy from zip — reliable, works offline, preserves .env and DB
+mkdir -p $GD_DIR
 cp -r "$SCRIPT_DIR"/. $GD_DIR/
+
+# Set up git for update-button support (clone to temp, move .git over)
+if [ ! -d "$GD_DIR/.git" ]; then
+    echo "  Setting up git for update support..."
+    rm -rf /tmp/gd-setup
+    echo "  Testing network..."
+    curl -sf --max-time 10 https://github.com > /dev/null \
+        && echo "  GitHub reachable." \
+        || echo "  WARNING: GitHub not reachable (curl failed)"
+    echo "  Cloning (no-checkout) from https://github.com/its-cb/GigDash.git ..."
+    git clone --no-checkout https://github.com/its-cb/GigDash.git /tmp/gd-setup 2>&1
+    GIT_EXIT=$?
+    if [ $GIT_EXIT -eq 0 ]; then
+        mv /tmp/gd-setup/.git $GD_DIR/.git
+        rm -rf /tmp/gd-setup
+        git -C $GD_DIR reset HEAD -q 2>/dev/null || true
+        echo "  Git ready — update button enabled."
+    else
+        echo "  Git clone failed (exit $GIT_EXIT) — update button unavailable."
+        rm -rf /tmp/gd-setup
+    fi
+fi
+
 chown -R $GD_USER:$GD_USER $GD_DIR
 
 # Install npm dependencies

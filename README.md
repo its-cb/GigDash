@@ -25,7 +25,7 @@ A household chore and earnings tracker for kids. Built for a TV-connected displa
 ### Quick start
 
 ```bash
-curl -O https://raw.githubusercontent.com/itscb/gigdash/main/docker-compose.yml
+curl -O https://raw.githubusercontent.com/its-cb/GigDash/main/docker-compose.yml
 JWT_SECRET=$(openssl rand -hex 32) docker-compose up -d
 ```
 
@@ -71,7 +71,7 @@ This is the simplest path for a dedicated device — a mini PC, NUC, or anything
 
 **1. Clone the repo on your Mac**
 ```bash
-git clone https://github.com/itscb/gigdash.git
+git clone https://github.com/its-cb/GigDash.git
 cd gigdash
 ```
 

@@ -61,6 +61,13 @@
       font-weight: 500;
     }
 
+    #parent-url {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 2px;
+      text-align: center;
+    }
+
     #clock-el {
       font-size: 1.5rem;
       font-weight: 700;
@@ -347,7 +354,10 @@
 <body>
   <div id="header">
     <div class="logo">💰 GigDashboard</div>
-    <div id="date-el"></div>
+    <div style="text-align:center">
+      <div id="date-el"></div>
+      <div id="parent-url"></div>
+    </div>
     <div id="clock-el"></div>
   </div>
   <div id="tracking-bar"></div>
@@ -480,6 +490,9 @@
 
     function render(data) {
       renderTrackingBar(data);
+      if (data.parentUrl) {
+        document.getElementById('parent-url').textContent = `Parent Panel → ${data.parentUrl}`;
+      }
       const cols = document.getElementById('columns');
       cols.style.gridTemplateColumns = `repeat(${data.kids.length}, 1fr)`;
       cols.innerHTML = data.kids.map((kid, idx) => renderKid(kid, data.kids, idx)).join('');

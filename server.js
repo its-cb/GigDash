@@ -8,10 +8,19 @@ if (fs.existsSync(envPath)) {
   });
 }
 
-const express = require('express');
-const cors    = require('cors');
-const path    = require('path');
+const express    = require('express');
+const cors       = require('cors');
+const path       = require('path');
+const { execSync } = require('child_process');
 const { initDatabase } = require('./db/database');
+
+function gitExec(cmd) {
+  return execSync(cmd, { cwd: __dirname, encoding: 'utf8', timeout: 30000 }).trim();
+}
+
+function hasGit() {
+  try { gitExec('git rev-parse --git-dir'); return true; } catch { return false; }
+}
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -35,6 +44,37 @@ app.get( '/api/push', (_req, res) => res.json({ ts: lastPush }));
 app.post('/api/push', require('./middleware/auth'), (_req, res) => {
   lastPush = Date.now();
   res.json({ ts: lastPush });
+});
+
+// Update endpoints
+app.get('/api/admin/update/check', require('./middleware/auth'), (_req, res) => {
+  if (!hasGit()) return res.json({ unsupported: true });
+  try {
+    gitExec('git fetch origin main -q');
+    const changes = gitExec('git log HEAD..origin/main --oneline');
+    const current = gitExec('git rev-parse --short HEAD');
+    res.json({ upToDate: !changes, changes: changes || null, current });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/admin/update/apply', require('./middleware/auth'), (_req, res) => {
+  if (!hasGit()) return res.status(400).json({ error: 'Update button not available — use deploygigdash instead' });
+  try {
+    gitExec('git fetch origin main -q');
+    const changes = gitExec('git log HEAD..origin/main --oneline');
+    if (!changes) return res.json({ upToDate: true });
+    gitExec('git pull origin main -q');
+    execSync('npm install --omit=dev -q', { cwd: __dirname, timeout: 120000 });
+    res.json({ ok: true, changes });
+    // Restart after response is sent
+    setTimeout(() => {
+      try { execSync('sudo systemctl restart gigdash'); } catch {}
+    }, 800);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 initDatabase();

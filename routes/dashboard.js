@@ -1,7 +1,17 @@
-const express  = require('express');
+const express = require('express');
+const os      = require('os');
 const { getDb } = require('../db/database');
 
 const router = express.Router();
+
+function getLocalIP() {
+  for (const ifaces of Object.values(os.networkInterfaces())) {
+    for (const iface of ifaces) {
+      if (iface.family === 'IPv4' && !iface.internal) return iface.address;
+    }
+  }
+  return 'localhost';
+}
 
 const today = () => {
   const d = new Date();
@@ -75,7 +85,9 @@ router.get('/', (req, res) => {
     ORDER  BY tt.id
   `).all(date, date);
 
-  res.json({ kids: data, trackingTasks, date });
+  const port = process.env.PORT || 3000;
+  const ip   = getLocalIP();
+  res.json({ kids: data, trackingTasks, date, parentUrl: `http://${ip}:${port}/parent` });
 });
 
 module.exports = router;
