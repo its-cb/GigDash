@@ -1092,20 +1092,6 @@ async function renderSettings(el) {
   `).join('');
 
   el.innerHTML = `
-    <div class="settings-section">
-      <div class="settings-section-title">Device Controls</div>
-      <div class="card" style="padding:16px;display:flex;flex-direction:column;gap:10px">
-        <div style="display:flex;gap:8px">
-          <button class="btn-sm btn-gray" id="tv-reload-btn" style="flex:1">📺 Reload TV</button>
-          <button class="btn-sm btn-gold" id="reboot-btn"    style="flex:1">🔄 Reboot</button>
-          <button class="btn-sm btn-red"  id="shutdown-btn"  style="flex:1">⏻ Shutdown</button>
-        </div>
-        <p style="font-size:0.78rem;color:var(--muted)">
-          Reload TV refreshes the browser. Reboot/Shutdown affect the whole device.
-        </p>
-      </div>
-    </div>
-
     <div class="settings-section" id="update-section">
       <div class="settings-section-title">Updates</div>
       <div class="card" style="padding:16px;display:flex;flex-direction:column;gap:10px">
@@ -1241,24 +1227,6 @@ async function renderSettings(el) {
     toast('Copied to clipboard');
   });
 
-  // ── Device controls ────────────────────────────────────────
-  $('tv-reload-btn').addEventListener('click', async () => {
-    await api('POST', '/admin/tv-reload');
-    toast('📺 TV reloading…');
-  });
-
-  $('reboot-btn').addEventListener('click', async () => {
-    if (!confirm('Reboot the device? Everything will be offline for about a minute.')) return;
-    await api('POST', '/admin/reboot');
-    toast('🔄 Rebooting…');
-  });
-
-  $('shutdown-btn').addEventListener('click', async () => {
-    if (!confirm('Shut down the device? You will need physical access to turn it back on.')) return;
-    await api('POST', '/admin/shutdown');
-    toast('⏻ Shutting down…');
-  });
-
   // ── Updates ────────────────────────────────────────────────
   async function checkForUpdates() {
     $('update-status').textContent = 'Checking…';
@@ -1324,6 +1292,40 @@ async function renderSettings(el) {
 
   // Auto-check on open
   checkForUpdates();
+
+  // ── Device controls ────────────────────────────────────────
+  el.insertAdjacentHTML('beforeend', `
+    <div class="settings-section">
+      <div class="settings-section-title">Device Controls</div>
+      <div class="card" style="padding:16px;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;gap:8px">
+          <button class="btn-sm btn-gray" id="tv-reload-btn" style="flex:1">📺 Reload TV</button>
+          <button class="btn-sm btn-gold" id="reboot-btn"    style="flex:1">🔄 Reboot</button>
+          <button class="btn-sm btn-red"  id="shutdown-btn"  style="flex:1">⏻ Shutdown</button>
+        </div>
+        <p style="font-size:0.78rem;color:var(--muted)">
+          Reload TV refreshes the browser. Reboot/Shutdown affect the whole device.
+        </p>
+      </div>
+    </div>
+  `);
+
+  $('tv-reload-btn').addEventListener('click', async () => {
+    await api('POST', '/admin/tv-reload');
+    toast('📺 TV reloading…');
+  });
+
+  $('reboot-btn').addEventListener('click', async () => {
+    if (!confirm('Reboot the device? Everything will be offline for about a minute.')) return;
+    await api('POST', '/admin/reboot');
+    toast('🔄 Rebooting…');
+  });
+
+  $('shutdown-btn').addEventListener('click', async () => {
+    if (!confirm('Shut down the device? You will need physical access to turn it back on.')) return;
+    await api('POST', '/admin/shutdown');
+    toast('⏻ Shutting down…');
+  });
 }
 
 // ── Push to TV ───────────────────────────────────────────────
