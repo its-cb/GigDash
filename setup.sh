@@ -44,6 +44,7 @@ apt-get install -y -qq \
     unclutter \
     unzip \
     fonts-dejavu \
+    fonts-noto-color-emoji \
     ca-certificates \
     gnupg
 
