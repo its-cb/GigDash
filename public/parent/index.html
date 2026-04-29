@@ -1268,10 +1268,16 @@ async function renderSettings(el) {
       return;
     }
     if (res?.upToDate) { toast('Already up to date'); return; }
-    $('update-status').textContent = '✓ Updated — restarting…';
-    $('update-status').style.color = 'var(--green)';
     $('apply-update-btn').classList.add('hidden');
     $('update-changes').classList.add('hidden');
+    let secs = 8;
+    const tick = () => {
+      $('update-status').textContent = `✓ Updated — reloading in ${secs}s…`;
+      $('update-status').style.color = 'var(--green)';
+      if (secs-- > 0) setTimeout(tick, 1000);
+      else location.reload();
+    };
+    tick();
   });
 
   // Auto-check on open
