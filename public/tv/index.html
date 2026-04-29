@@ -513,9 +513,8 @@
       }
     }
 
-    // Push signal — triggers immediate refresh when parent hits "Push to TV"
-    let lastKnownPush = 0;
-    let pushReady = false;
+    // Push signal — triggers immediate data refresh
+    let lastKnownPush = 0, pushReady = false;
     async function checkPush() {
       try {
         const { ts } = await fetch('/api/push').then(r => r.json());
@@ -524,9 +523,20 @@
       } catch {}
     }
 
+    // Reload signal — triggers full page reload
+    let lastKnownReload = 0, reloadReady = false;
+    async function checkReload() {
+      try {
+        const { ts } = await fetch('/api/admin/tv-reload').then(r => r.json());
+        if (!reloadReady) { lastKnownReload = ts; reloadReady = true; return; }
+        if (ts > lastKnownReload) { location.reload(); }
+      } catch {}
+    }
+
     fetchData();
-    setInterval(fetchData, 30000);  // background refresh every 30 s
-    setInterval(checkPush, 3000);   // push signal check every 3 s
+    setInterval(fetchData,   30000); // background refresh every 30 s
+    setInterval(checkPush,    3000); // push signal check every 3 s
+    setInterval(checkReload,  3000); // reload signal check every 3 s
   </script>
 </body>
 </html>

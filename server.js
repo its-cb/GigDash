@@ -38,12 +38,30 @@ app.use('/api/auth',      require('./routes/auth'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/parent',    require('./middleware/auth'), require('./routes/parent'));
 
-// Push signal — lets the parent app trigger an immediate TV refresh
+// Push signal — triggers immediate TV data refresh
 let lastPush = Date.now();
 app.get( '/api/push', (_req, res) => res.json({ ts: lastPush }));
 app.post('/api/push', require('./middleware/auth'), (_req, res) => {
   lastPush = Date.now();
   res.json({ ts: lastPush });
+});
+
+// TV reload signal — triggers full page reload on the TV
+let lastReload = 0;
+app.get( '/api/admin/tv-reload', (_req, res) => res.json({ ts: lastReload }));
+app.post('/api/admin/tv-reload', require('./middleware/auth'), (_req, res) => {
+  lastReload = Date.now();
+  res.json({ ts: lastReload });
+});
+
+// System controls
+app.post('/api/admin/reboot',   require('./middleware/auth'), (_req, res) => {
+  res.json({ ok: true });
+  setTimeout(() => { try { execSync('sudo reboot'); } catch {} }, 500);
+});
+app.post('/api/admin/shutdown', require('./middleware/auth'), (_req, res) => {
+  res.json({ ok: true });
+  setTimeout(() => { try { execSync('sudo shutdown -h now'); } catch {} }, 500);
 });
 
 // Update endpoints
