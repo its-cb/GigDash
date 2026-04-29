@@ -142,7 +142,6 @@
     /* ── COLUMNS ────────────────────────────────────────────── */
     #columns {
       display: grid;
-      grid-template-columns: 1fr 1fr;
       flex: 1;
       min-height: 0;
     }
@@ -154,10 +153,9 @@
       gap: 20px;
       overflow: hidden;
       border-top: 4px solid transparent;
+      border-right: 1px solid var(--border);
     }
-
-    .kid-col.kid-1 { border-top-color: var(--kid1); border-right: 1px solid var(--border); }
-    .kid-col.kid-2 { border-top-color: var(--kid2); }
+    .kid-col:last-child { border-right: none; }
 
     /* ── KID HEADER ─────────────────────────────────────────── */
     .kid-header {
@@ -175,8 +173,7 @@
       letter-spacing: -0.03em;
     }
 
-    .kid-1 .kid-name { color: var(--kid1); }
-    .kid-2 .kid-name { color: var(--kid2); }
+    /* kid-name color set via inline style from DB */
 
     .piggy-bank {
       display: flex;
@@ -247,8 +244,7 @@
       border-radius: 2px;
       transition: width 0.4s ease;
     }
-    .kid-1 .progress-fill { background: var(--kid1); }
-    .kid-2 .progress-fill { background: var(--kid2); }
+    /* progress-fill color set via inline style from DB */
 
     /* ── TASK ITEMS ─────────────────────────────────────────── */
     .task-list { display: flex; flex-direction: column; gap: 7px; overflow: hidden; }
@@ -376,7 +372,8 @@
     }
 
     function renderKid(kid, allKids, idx) {
-      const cls      = `kid-${idx + 1}`;
+      const cls   = `kid-${idx + 1}`;
+      const color = kid.color || '#3b82f6';
       const done     = kid.dailyTasks.filter(t => t.completed).length;
       const total    = kid.dailyTasks.length;
       const pct      = total ? Math.round((done / total) * 100) : 0;
@@ -425,9 +422,9 @@
       `;
 
       return `
-        <div class="kid-col ${cls}">
+        <div class="kid-col ${cls}" style="border-top-color:${color}">
           <div class="kid-header">
-            <div class="kid-name">${kid.name}</div>
+            <div class="kid-name" style="color:${color}">${kid.name}</div>
             <div class="piggy-bank">
               <span class="piggy-icon">🐷</span>
               <span class="piggy-amount">${fmt(kid.totalEarnings)}</span>
@@ -440,7 +437,7 @@
               <span style="font-size:0.8rem;color:var(--muted)">${done}/${total}</span>
             </div>
             <div class="progress-wrap">
-              <div class="progress-fill" style="width:${pct}%"></div>
+              <div class="progress-fill" style="width:${pct}%;background:${color}"></div>
             </div>
             <div class="task-list">${dailyItems}</div>
           </div>
@@ -483,8 +480,9 @@
 
     function render(data) {
       renderTrackingBar(data);
-      document.getElementById('columns').innerHTML =
-        data.kids.map((kid, idx) => renderKid(kid, data.kids, idx)).join('');
+      const cols = document.getElementById('columns');
+      cols.style.gridTemplateColumns = `repeat(${data.kids.length}, 1fr)`;
+      cols.innerHTML = data.kids.map((kid, idx) => renderKid(kid, data.kids, idx)).join('');
     }
 
     // ── Fetch & poll ─────────────────────────────────────────

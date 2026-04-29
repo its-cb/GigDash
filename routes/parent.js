@@ -1,5 +1,14 @@
 const express  = require('express');
+const bcrypt   = require('bcryptjs');
+const crypto   = require('crypto');
 const { getDb } = require('../db/database');
+
+function generateRecoveryCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return `${code.slice(0, 4)}-${code.slice(4)}`; // e.g. KRTM-8HWP
+}
 
 const router = express.Router();
 const today = () => {
@@ -246,6 +255,65 @@ router.post('/kids/:kidId/cashout', (req, res) => {
   // Delete all completions for this kid (history resets)
   db.prepare('DELETE FROM gig_completions WHERE kid_id = ?').run(req.params.kidId);
   res.json({ ok: true, cashedOut: total });
+});
+
+// ── Kid management ────────────────────────────────────────────────────────────
+router.patch('/kids/:id', (req, res) => {
+  const { name, color } = req.body || {};
+  const db = getDb();
+  if (name?.trim()) db.prepare('UPDATE kids SET name  = ? WHERE id = ?').run(name.trim(), req.params.id);
+  if (color?.trim()) db.prepare('UPDATE kids SET color = ? WHERE id = ?').run(color.trim(), req.params.id);
+  res.json({ ok: true });
+});
+
+router.post('/kids', (req, res) => {
+  const { name, color } = req.body || {};
+  if (!name?.trim()) return res.status(400).json({ error: 'Name required' });
+  const db = getDb();
+  const { lastInsertRowid } = db.prepare(
+    'INSERT INTO kids (name, color) VALUES (?, ?)'
+  ).run(name.trim(), color || '#10b981');
+  res.json({ id: lastInsertRowid });
+});
+
+router.delete('/kids/:id', (req, res) => {
+  const db  = getDb();
+  const kid = db.prepare('SELECT COUNT(*) as c FROM kids').get();
+  if (kid.c <= 1) return res.status(400).json({ error: 'Cannot remove the last kid' });
+  db.prepare('DELETE FROM daily_completions WHERE kid_id = ?').run(req.params.id);
+  db.prepare('DELETE FROM gig_completions   WHERE kid_id = ?').run(req.params.id);
+  db.prepare('DELETE FROM tracking_completions WHERE kid_id = ?').run(req.params.id);
+  db.prepare('DELETE FROM kids WHERE id = ?').run(req.params.id);
+  res.json({ ok: true });
+});
+
+// ── Password & recovery ───────────────────────────────────────────────────────
+router.post('/change-password', (req, res) => {
+  const { current_password, new_password } = req.body || {};
+  if (!current_password || !new_password) {
+    return res.status(400).json({ error: 'Current and new password required' });
+  }
+  if (new_password.length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters' });
+  }
+  const db     = getDb();
+  const parent = db.prepare('SELECT * FROM parents WHERE id = ?').get(req.user.id);
+  if (!bcrypt.compareSync(current_password, parent.password_hash)) {
+    return res.status(401).json({ error: 'Current password is incorrect' });
+  }
+  db.prepare('UPDATE parents SET password_hash = ? WHERE id = ?')
+    .run(bcrypt.hashSync(new_password, 10), req.user.id);
+  res.json({ ok: true });
+});
+
+router.post('/recovery-code/generate', (req, res) => {
+  const code      = generateRecoveryCode();
+  const codeNoDash = code.replace(/-/g, '');
+  const hash      = bcrypt.hashSync(codeNoDash, 10);
+  getDb().prepare('UPDATE parents SET recovery_code_hash = ? WHERE id = ?')
+    .run(hash, req.user.id);
+  // Return the plain code once — never stored in plain text
+  res.json({ code });
 });
 
 module.exports = router;

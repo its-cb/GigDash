@@ -88,6 +88,11 @@ function initDatabase() {
     db.exec("ALTER TABLE gig_tasks ADD COLUMN type TEXT NOT NULL DEFAULT 'weekly'");
   }
 
+  const parentCols = db.prepare('PRAGMA table_info(parents)').all().map(c => c.name);
+  if (!parentCols.includes('recovery_code_hash')) {
+    db.exec('ALTER TABLE parents ADD COLUMN recovery_code_hash TEXT');
+  }
+
   return db;
 }
 

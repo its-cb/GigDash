@@ -6,13 +6,15 @@ A household chore and earnings tracker for kids. Built for a TV-connected displa
 
 ## Features
 
-- **TV Dashboard** — full-screen two-column display, one column per kid
+- **TV Dashboard** — full-screen display, one column per kid, scales to any number of kids
 - **Daily Expectations** — tasks that must be completed before gig tasks unlock
 - **Gig Tasks** — paid chores with dollar values; first-come-first-serve between kids
   - Weekly (rolling 7 days), Bi-weekly (14 days), or Permanent types
 - **Tracking Tasks** — two-step non-gating tasks (e.g. Feed the dogs — Morning / Evening)
 - **Piggy Bank** — running earnings total per kid with cash-out support
 - **Parent Dashboard** — mobile-friendly web app with JWT login
+  - Daily task management, gig task management, tracking, earnings
+  - **Settings tab** — rename kids, change colors, add/remove kids, change password, recovery code
 
 ---
 
@@ -41,7 +43,7 @@ docker exec -e KID1_NAME="Alex" -e KID2_NAME="Jordan" gigdash node db/seed.js
 
 Replace `Alex` and `Jordan` with your kids' names. This only needs to be run once — the database persists in a Docker volume and won't be re-seeded on updates.
 
-Default logins: `dad / parent123` and `mom / parent123` — change these after first login.
+Default logins: `dad / parent123` and `mom / parent123` — change these in the Settings tab after first login.
 
 ### Environment variables
 
@@ -89,7 +91,7 @@ deploygigdash <device-ip> <username>
 
 This zips the project, transfers it to the device, and runs the full setup automatically. On first install it will ask for your kids' names, then handle everything else — Node.js, dependencies, systemd service, and Chromium kiosk mode.
 
-**5. On subsequent updates**, just pull and redeploy:
+**5. On subsequent updates**, pull and redeploy:
 ```bash
 git pull && deploygigdash <device-ip> <username>
 ```
@@ -102,46 +104,25 @@ See [SETUP.md](SETUP.md) for full details including systemd configuration, kiosk
 
 ## Managing kids
 
-Kid names are set once during first-time setup and stored in the database. To rename a kid or add one after the fact, use the commands below.
+Kids are managed directly from the **Settings tab** in the parent dashboard — no command line needed. You can:
 
-### Rename a kid
+- Rename any kid
+- Change their color (10 color options)
+- Add new kids
+- Remove a kid
 
-**Docker:**
-```bash
-docker exec gigdash node -e "
-const { initDatabase, getDb } = require('./db/database');
-initDatabase();
-getDb().prepare('UPDATE kids SET name = ? WHERE id = ?').run('NewName', 1);
-console.log('Done — refresh the TV dashboard');
-"
-```
+The TV dashboard automatically adjusts its layout to however many kids are configured.
 
-**Systemd (non-Docker):**
-```bash
-cd /opt/gigdash
-node -e "
-const { initDatabase, getDb } = require('./db/database');
-initDatabase();
-getDb().prepare('UPDATE kids SET name = ? WHERE id = ?').run('NewName', 1);
-console.log('Done — refresh the TV dashboard');
-"
-```
+---
 
-Replace `'NewName'` with the new name and `1` with the kid's ID (`1` = first kid, `2` = second kid).
+## Password recovery
 
-### Add a kid
+If you get locked out, use a recovery code to reset your password:
 
-```bash
-# Docker
-docker exec gigdash node -e "
-const { initDatabase, getDb } = require('./db/database');
-initDatabase();
-getDb().prepare('INSERT INTO kids (name, color) VALUES (?, ?)').run('NewKid', '#10b981');
-console.log('Done');
-"
-```
+1. Go to the parent login page and tap **Forgot password?**
+2. Enter your username, recovery code, and a new password
 
-> **Note:** The TV dashboard uses a two-column layout. Adding a third kid will display correctly but may feel cramped — a three-column layout update would be needed for the best experience.
+To generate a recovery code while logged in, go to **Settings → Recovery Code → Generate**. Store the code somewhere safe — it's only shown once. You can regenerate a new one any time you're logged in.
 
 ---
 

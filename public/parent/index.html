@@ -381,6 +381,65 @@
 
     .kid-toggle[disabled] { cursor: not-allowed; opacity: 0.4; }
 
+    /* ── SETTINGS ───────────────────────────────────────────── */
+    .settings-section { margin-bottom: 20px; }
+
+    .settings-section-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .kid-settings-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 16px;
+      margin-bottom: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .color-swatches {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .color-swatch {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      border: 3px solid transparent;
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+    .color-swatch:active { transform: scale(0.9); }
+    .color-swatch.selected { border-color: var(--text); }
+
+    .code-display {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      font-family: monospace;
+      font-size: 1.4rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-align: center;
+      color: var(--text);
+    }
+
+    .warning-note {
+      font-size: 0.82rem;
+      color: var(--red);
+      text-align: center;
+    }
+
     /* loading / empty states */
     .loading { color: var(--muted); text-align: center; padding: 32px; font-size: 0.95rem; }
     .empty   { color: var(--muted); text-align: center; padding: 20px 16px; font-size: 0.9rem; }
@@ -428,17 +487,49 @@
 <div id="login-view">
   <div class="login-card">
     <div class="login-logo">💰 GigDashboard</div>
-    <div class="login-sub">Parent Control Panel</div>
-    <div class="form-group">
-      <label class="form-label" for="username">Username</label>
-      <input id="username" type="text" placeholder="dad or mom" autocomplete="username">
+
+    <!-- Login form -->
+    <div id="login-form">
+      <div class="login-sub">Parent Control Panel</div>
+      <div class="form-group">
+        <label class="form-label" for="username">Username</label>
+        <input id="username" type="text" placeholder="dad or mom" autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="password">Password</label>
+        <input id="password" type="password" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <div class="error-msg" id="login-error"></div>
+      <button class="btn-primary" id="login-btn" style="margin-top:8px">Sign In</button>
+      <button id="show-recover-btn"
+              style="width:100%;margin-top:12px;background:none;color:var(--muted);font-size:0.85rem;padding:8px">
+        Forgot password?
+      </button>
     </div>
-    <div class="form-group">
-      <label class="form-label" for="password">Password</label>
-      <input id="password" type="password" placeholder="••••••••" autocomplete="current-password">
+
+    <!-- Recovery form -->
+    <div id="recover-form" class="hidden">
+      <div class="login-sub">Reset Password</div>
+      <div class="form-group">
+        <label class="form-label">Username</label>
+        <input id="rec-username" type="text" placeholder="dad or mom" autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Recovery Code</label>
+        <input id="rec-code" type="text" placeholder="XXXX-XXXX" autocomplete="off"
+               style="font-family:monospace;letter-spacing:0.1em;text-transform:uppercase">
+      </div>
+      <div class="form-group">
+        <label class="form-label">New Password</label>
+        <input id="rec-new-pw" type="password" placeholder="New password (min 6 chars)">
+      </div>
+      <div class="error-msg" id="recover-error"></div>
+      <button class="btn-primary" id="recover-btn" style="margin-top:8px">Reset Password</button>
+      <button id="show-login-btn"
+              style="width:100%;margin-top:12px;background:none;color:var(--muted);font-size:0.85rem;padding:8px">
+        Back to sign in
+      </button>
     </div>
-    <div class="error-msg" id="login-error"></div>
-    <button class="btn-primary" id="login-btn" style="margin-top:8px">Sign In</button>
   </div>
 </div>
 
@@ -455,6 +546,7 @@
     <button class="tab-btn"        data-tab="tracking">Tracking</button>
     <button class="tab-btn"        data-tab="gigs">Gig Tasks</button>
     <button class="tab-btn"        data-tab="earnings">Earnings</button>
+    <button class="tab-btn"        data-tab="settings">Settings</button>
   </div>
 
   <div id="tab-content">
@@ -530,6 +622,37 @@ $('login-btn').addEventListener('click', async () => {
 
 $('password').addEventListener('keydown', e => { if (e.key === 'Enter') $('login-btn').click(); });
 
+// Toggle between login and recovery forms
+$('show-recover-btn').addEventListener('click', () => {
+  $('login-form').classList.add('hidden');
+  $('recover-form').classList.remove('hidden');
+});
+$('show-login-btn').addEventListener('click', () => {
+  $('recover-form').classList.add('hidden');
+  $('login-form').classList.remove('hidden');
+});
+
+// Recovery form submit
+$('recover-btn').addEventListener('click', async () => {
+  const u    = $('rec-username').value.trim();
+  const code = $('rec-code').value.trim();
+  const pw   = $('rec-new-pw').value;
+  $('recover-error').textContent = '';
+  if (!u || !code || !pw) { $('recover-error').textContent = 'All fields required'; return; }
+  $('recover-btn').textContent = 'Resetting…';
+  const data = await api('POST', '/auth/recover', { username: u, recovery_code: code, new_password: pw })
+    .catch(() => null);
+  $('recover-btn').textContent = 'Reset Password';
+  if (!data || data.error) {
+    $('recover-error').textContent = data?.error || 'Reset failed';
+    return;
+  }
+  token = data.token; username = data.username;
+  localStorage.setItem('gd_token',    token);
+  localStorage.setItem('gd_username', username);
+  showApp();
+});
+
 $('logout-btn').addEventListener('click', doLogout);
 
 // ── Kids ─────────────────────────────────────────────────────
@@ -565,6 +688,7 @@ function renderTab(tab) {
   if (tab === 'tracking') renderTracking(el);
   if (tab === 'gigs')     renderGigs(el);
   if (tab === 'earnings') renderEarnings(el);
+  if (tab === 'settings') renderSettings(el);
 }
 
 // ── DAILY TASKS ──────────────────────────────────────────────
@@ -932,6 +1056,160 @@ async function renderEarnings(el) {
         renderTab('earnings');
       }
     });
+  });
+}
+
+// ── SETTINGS ─────────────────────────────────────────────────
+const KID_COLORS = [
+  '#3b82f6','#ec4899','#10b981','#f59e0b','#8b5cf6',
+  '#ef4444','#14b8a6','#f97316','#6366f1','#e11d48'
+];
+
+async function renderSettings(el) {
+  const kidsData = await api('GET', '/parent/kids');
+  if (!kidsData) return;
+
+  function swatches(kidId, currentColor) {
+    return KID_COLORS.map(c => `
+      <div class="color-swatch ${c === currentColor ? 'selected' : ''}"
+           style="background:${c}"
+           data-kid-color="${kidId}" data-color="${c}"
+           title="${c}"></div>
+    `).join('');
+  }
+
+  const kidCards = kidsData.map(k => `
+    <div class="kid-settings-card" id="kid-card-${k.id}">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:12px;height:12px;border-radius:50%;background:${k.color};flex-shrink:0"></div>
+        <input type="text" value="${k.name}" id="kid-name-${k.id}"
+               style="flex:1;font-weight:600;font-size:1rem">
+        <button class="btn-sm btn-green" data-save-kid="${k.id}">Save</button>
+        <button class="btn-sm btn-red"   data-del-kid="${k.id}">Remove</button>
+      </div>
+      <div class="color-swatches">${swatches(k.id, k.color)}</div>
+    </div>
+  `).join('');
+
+  el.innerHTML = `
+    <div class="settings-section">
+      <div class="settings-section-title">Kids</div>
+      ${kidCards}
+      <div class="card" style="padding:14px 16px">
+        <div style="display:flex;gap:8px">
+          <input type="text" id="new-kid-name" placeholder="New kid name…" style="flex:1">
+          <button class="btn-primary" id="add-kid-btn" style="width:auto;padding:12px 16px">+ Add</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Change Password</div>
+      <div class="card" style="padding:16px;display:flex;flex-direction:column;gap:10px">
+        <input type="password" id="cur-pw"  placeholder="Current password">
+        <input type="password" id="new-pw"  placeholder="New password (min 6 chars)">
+        <input type="password" id="conf-pw" placeholder="Confirm new password">
+        <button class="btn-primary" id="change-pw-btn">Update Password</button>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Recovery Code</div>
+      <div class="card" style="padding:16px;display:flex;flex-direction:column;gap:10px">
+        <p style="font-size:0.88rem;color:var(--muted)">
+          A recovery code lets you reset your password if you get locked out.
+          Generate one and store it somewhere safe — it's only shown once.
+        </p>
+        <button class="btn-primary" id="gen-code-btn">Generate Recovery Code</button>
+        <div id="code-result" class="hidden">
+          <div class="code-display" id="code-display"></div>
+          <div class="warning-note" style="margin-top:8px">
+            ⚠️ Copy this now — it will not be shown again
+          </div>
+          <button class="btn-sm btn-gray" id="copy-code-btn" style="width:100%;margin-top:8px">
+            Copy to Clipboard
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Color swatch clicks
+  el.querySelectorAll('[data-kid-color]').forEach(swatch => {
+    swatch.addEventListener('click', async () => {
+      const kidId = swatch.dataset.kidColor;
+      const color = swatch.dataset.color;
+      el.querySelectorAll(`[data-kid-color="${kidId}"]`).forEach(s => s.classList.remove('selected'));
+      swatch.classList.add('selected');
+      document.querySelector(`#kid-card-${kidId} [style*="border-radius:50%"]`).style.background = color;
+      await api('PATCH', `/parent/kids/${kidId}`, { color });
+      await loadKids();
+      toast('Color updated');
+    });
+  });
+
+  // Save kid name
+  el.querySelectorAll('[data-save-kid]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const kidId = btn.dataset.saveKid;
+      const name  = $(`kid-name-${kidId}`).value.trim();
+      if (!name) return;
+      await api('PATCH', `/parent/kids/${kidId}`, { name });
+      await loadKids();
+      toast('Name updated');
+    });
+  });
+
+  // Remove kid
+  el.querySelectorAll('[data-del-kid]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const name = kidsData.find(k => k.id == btn.dataset.delKid)?.name;
+      if (!confirm(`Remove ${name}? This deletes all their task history.`)) return;
+      const res = await api('DELETE', `/parent/kids/${btn.dataset.delKid}`);
+      if (res?.error) { toast(`⚠️ ${res.error}`); return; }
+      await loadKids();
+      toast(`${name} removed`);
+      renderTab('settings');
+    });
+  });
+
+  // Add kid
+  $('add-kid-btn').addEventListener('click', async () => {
+    const name = $('new-kid-name').value.trim();
+    if (!name) return;
+    await api('POST', '/parent/kids', { name, color: KID_COLORS[kidsData.length % KID_COLORS.length] });
+    await loadKids();
+    toast(`${name} added`);
+    renderTab('settings');
+  });
+
+  // Change password
+  $('change-pw-btn').addEventListener('click', async () => {
+    const cur  = $('cur-pw').value;
+    const nw   = $('new-pw').value;
+    const conf = $('conf-pw').value;
+    if (!cur || !nw) { toast('Fill in all password fields'); return; }
+    if (nw !== conf)  { toast('New passwords do not match'); return; }
+    const res = await api('POST', '/parent/change-password', { current_password: cur, new_password: nw });
+    if (res?.error) { toast(`⚠️ ${res.error}`); return; }
+    $('cur-pw').value = $('new-pw').value = $('conf-pw').value = '';
+    toast('✓ Password updated');
+  });
+
+  // Generate recovery code
+  $('gen-code-btn').addEventListener('click', async () => {
+    if (!confirm('Generate a new recovery code? Any existing code will be replaced.')) return;
+    const res = await api('POST', '/parent/recovery-code/generate');
+    if (!res?.code) { toast('Failed to generate code'); return; }
+    $('code-display').textContent = res.code;
+    $('code-result').classList.remove('hidden');
+    $('gen-code-btn').textContent = 'Regenerate Code';
+  });
+
+  // Copy code
+  $('copy-code-btn').addEventListener('click', () => {
+    navigator.clipboard.writeText($('code-display').textContent);
+    toast('Copied to clipboard');
   });
 }
 
