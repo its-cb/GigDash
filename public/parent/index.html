@@ -1317,14 +1317,14 @@ async function renderSettings(el) {
 
   $('reboot-btn').addEventListener('click', async () => {
     if (!confirm('Reboot the device? Everything will be offline for about a minute.')) return;
-    await api('POST', '/admin/reboot');
-    toast('🔄 Rebooting…');
+    const res = await api('POST', '/admin/reboot');
+    toast(res?.error ? `⚠️ ${res.error}` : '🔄 Rebooting…');
   });
 
   $('shutdown-btn').addEventListener('click', async () => {
     if (!confirm('Shut down the device? You will need physical access to turn it back on.')) return;
-    await api('POST', '/admin/shutdown');
-    toast('⏻ Shutting down…');
+    const res = await api('POST', '/admin/shutdown');
+    toast(res?.error ? `⚠️ ${res.error}` : '⏻ Shutting down…');
   });
 }
 

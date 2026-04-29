@@ -54,12 +54,16 @@ app.post('/api/admin/tv-reload', require('./middleware/auth'), (_req, res) => {
   res.json({ ts: lastReload });
 });
 
-// System controls
+// System controls — not supported in Docker
+const isDocker = require('fs').existsSync('/.dockerenv');
+
 app.post('/api/admin/reboot',   require('./middleware/auth'), (_req, res) => {
+  if (isDocker) return res.status(400).json({ error: 'Not supported in Docker' });
   res.json({ ok: true });
   setTimeout(() => { try { execSync('sudo reboot'); } catch {} }, 500);
 });
 app.post('/api/admin/shutdown', require('./middleware/auth'), (_req, res) => {
+  if (isDocker) return res.status(400).json({ error: 'Not supported in Docker' });
   res.json({ ok: true });
   setTimeout(() => { try { execSync('sudo shutdown -h now'); } catch {} }, 500);
 });
