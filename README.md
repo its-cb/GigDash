@@ -14,7 +14,7 @@ A household chore and earnings tracker for kids. Built for a TV-connected displa
 - **Piggy Bank** — running earnings total per kid with cash-out support
 - **Parent Dashboard** — mobile-friendly web app with JWT login
   - Daily task management, gig task management, tracking, earnings
-  - **Settings tab** — rename kids, change colors, add/remove kids, change password, recovery code
+  - **Settings tab** — kids management, color picker, password change, recovery code, WiFi setup, device controls, in-app updates
 
 ---
 
@@ -65,23 +65,25 @@ The database is stored in a Docker volume (`gigdash-data`) and survives updates.
 
 ## Running without Docker
 
-### Deploy to a Debian/Linux box from your Mac (recommended)
+### Deploy to a Linux box from your Mac (recommended)
 
-This is the simplest path for a dedicated device — a mini PC, NUC, or anything connected to a TV.
+This is the simplest path for a dedicated device — a mini PC, NUC, Raspberry Pi, or anything connected to a TV.
+
+**Supported:** Debian 13 (Trixie), Raspberry Pi OS, and any modern Debian-based distro.
 
 **1. Clone the repo on your Mac**
 ```bash
 git clone https://github.com/its-cb/GigDash.git
-cd gigdash
+cd GigDash
 ```
 
 **2. Add a shell alias for easy deploys**
 ```bash
-echo 'alias deploygigdash="bash ~/path/to/gigdash/deploy.sh"' >> ~/.zshrc
+echo 'alias deploygigdash="bash ~/path/to/GigDash/deploy.sh"' >> ~/.zshrc
 source ~/.zshrc
 ```
 
-**3. Install Debian 13 on your device** with only the SSH server option selected. Make sure it's on the same network as your Mac.
+**3. Install the OS on your device** with only the SSH server option selected. Make sure it's on the same network as your Mac.
 
 **4. Run the deploy script**
 ```bash
@@ -98,7 +100,21 @@ git pull && deploygigdash <device-ip> <username>
 
 The database is preserved between deploys — only code files are updated.
 
+> **Tip:** Once deployed, you can apply future updates directly from the **Settings → Updates** tab in the parent dashboard without needing to redeploy from your Mac.
+
 See [SETUP.md](SETUP.md) for full details including systemd configuration, kiosk mode, and optional nginx setup.
+
+---
+
+## First-time WiFi setup
+
+If your device is connected via ethernet and you want to switch to WiFi, you can configure it from the parent dashboard without SSH:
+
+1. Open the parent dashboard on any device connected to the same network
+2. Go to **Settings → WiFi**
+3. Tap **Scan** to see nearby networks, or **Enter network manually** for hidden SSIDs
+4. Select your network, enter the password, and tap **Connect**
+5. Once connected, unplug the ethernet cable
 
 ---
 
