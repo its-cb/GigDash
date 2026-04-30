@@ -64,8 +64,9 @@ if ! id "$GD_USER" &>/dev/null; then
     NEEDS_REBOOT=true
 fi
 # Always write sudoers (covers fresh installs and updates)
-printf '%s ALL=(ALL) NOPASSWD: /usr/sbin/reboot, /usr/sbin/shutdown, /usr/bin/systemctl restart gigdash\nDefaults:%s !requiretty\n' \
-    "$GD_USER" "$GD_USER" > /etc/sudoers.d/gigdash
+NMCLI_PATH=$(which nmcli 2>/dev/null || echo /usr/bin/nmcli)
+printf '%s ALL=(ALL) NOPASSWD: /usr/sbin/reboot, /usr/bin/systemctl restart gigdash, /usr/bin/systemctl poweroff, %s\nDefaults:%s !requiretty\n' \
+    "$GD_USER" "$NMCLI_PATH" "$GD_USER" > /etc/sudoers.d/gigdash
 chmod 440 /etc/sudoers.d/gigdash
 
 # ── 4. Auto-login on tty1 ────────────────────────────────────

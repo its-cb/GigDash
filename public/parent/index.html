@@ -440,6 +440,29 @@
       text-align: center;
     }
 
+    /* ── WIFI WIZARD ────────────────────────────────────────── */
+    .wifi-network {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    .wifi-network:last-child { border-bottom: none; }
+    .wifi-network:active { background: var(--bg); }
+
+    .wifi-signal {
+      font-size: 0.75rem;
+      letter-spacing: -1px;
+      flex-shrink: 0;
+      color: var(--primary);
+    }
+
+    .wifi-name { flex: 1; font-size: 0.95rem; font-weight: 500; }
+    .wifi-lock { font-size: 0.8rem; color: var(--muted); }
+
     /* loading / empty states */
     .loading { color: var(--muted); text-align: center; padding: 32px; font-size: 0.95rem; }
     .empty   { color: var(--muted); text-align: center; padding: 20px 16px; font-size: 0.9rem; }
@@ -1129,6 +1152,33 @@ async function renderSettings(el) {
     </div>
 
     <div class="settings-section">
+      <div class="settings-section-title">WiFi</div>
+      <div class="card" id="wifi-card" style="overflow:hidden">
+        <div style="padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+          <span id="wifi-status-label" style="font-size:0.88rem;color:var(--muted)">Checking…</span>
+          <button class="btn-sm btn-primary" id="wifi-scan-btn">Scan</button>
+        </div>
+        <div id="wifi-network-list" class="hidden"></div>
+        <div id="wifi-connect-form" class="hidden" style="padding:14px 16px;display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--border)">
+          <input type="text"     id="wifi-ssid"     placeholder="Network name (SSID)">
+          <input type="password" id="wifi-password" placeholder="Password (leave blank if open)">
+          <div style="display:flex;gap:8px">
+            <button class="btn-primary" id="wifi-connect-btn" style="flex:1">Connect</button>
+            <button class="btn-sm btn-gray" id="wifi-cancel-btn">Cancel</button>
+          </div>
+          <div id="wifi-error" class="hidden"
+               style="background:var(--red-bg);border:1px solid var(--red);border-radius:8px;padding:10px;font-size:0.82rem;color:var(--red)"></div>
+        </div>
+        <div style="padding:8px 16px;border-top:1px solid var(--border)">
+          <button id="wifi-manual-btn"
+                  style="background:none;color:var(--muted);font-size:0.82rem;padding:6px 0;width:100%">
+            Enter network manually
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
       <div class="settings-section-title">Recovery Code</div>
       <div class="card" style="padding:16px;display:flex;flex-direction:column;gap:10px">
         <p style="font-size:0.88rem;color:var(--muted)">
@@ -1292,6 +1342,100 @@ async function renderSettings(el) {
 
   // Auto-check on open
   checkForUpdates();
+
+  // ── WiFi wizard ────────────────────────────────────────────
+  function signalBars(s) {
+    if (s >= 75) return '████';
+    if (s >= 50) return '███░';
+    if (s >= 25) return '██░░';
+    return '█░░░';
+  }
+
+  async function loadWifiStatus() {
+    const res = await api('GET', '/admin/wifi/status');
+    if (!res || res.unsupported) {
+      $('wifi-status-label').textContent = 'Not available on this device';
+      $('wifi-scan-btn').classList.add('hidden');
+      $('wifi-manual-btn').classList.add('hidden');
+      return;
+    }
+    const wifi = res.connections.find(c => c.type === 'wifi' || c.type === '802-11-wireless');
+    const eth  = res.connections.find(c => c.type === 'ethernet' || c.type === '802-3-ethernet');
+    if (wifi) {
+      $('wifi-status-label').textContent = `Connected: ${wifi.name}`;
+      $('wifi-status-label').style.color = 'var(--green)';
+    } else if (eth) {
+      $('wifi-status-label').textContent = 'Ethernet only — no WiFi configured';
+    } else {
+      $('wifi-status-label').textContent = 'Not connected';
+    }
+  }
+
+  function showConnectForm(ssid = '') {
+    $('wifi-network-list').classList.add('hidden');
+    $('wifi-connect-form').classList.remove('hidden');
+    $('wifi-ssid').value = ssid;
+    $('wifi-ssid').readOnly = !!ssid;
+    $('wifi-password').value = '';
+    $('wifi-error').classList.add('hidden');
+    $('wifi-password').focus();
+  }
+
+  $('wifi-scan-btn').addEventListener('click', async () => {
+    $('wifi-scan-btn').textContent = 'Scanning…';
+    $('wifi-scan-btn').disabled = true;
+    $('wifi-connect-form').classList.add('hidden');
+    const res = await api('GET', '/admin/wifi/scan');
+    $('wifi-scan-btn').textContent = 'Scan';
+    $('wifi-scan-btn').disabled = false;
+    if (!res || res.unsupported || res.error) {
+      toast('⚠️ Scan failed'); return;
+    }
+    if (res.networks.length === 0) {
+      $('wifi-network-list').innerHTML = '<div class="empty">No networks found</div>';
+    } else {
+      $('wifi-network-list').innerHTML = res.networks.map(n => `
+        <div class="wifi-network" data-ssid="${n.ssid.replace(/"/g, '&quot;')}">
+          <span class="wifi-signal">${signalBars(n.signal)}</span>
+          <span class="wifi-name">${n.ssid}</span>
+          <span class="wifi-lock">${n.security && n.security !== '--' ? '🔒' : ''}</span>
+        </div>
+      `).join('');
+      el.querySelectorAll('.wifi-network').forEach(row => {
+        row.addEventListener('click', () => showConnectForm(row.dataset.ssid));
+      });
+    }
+    $('wifi-network-list').classList.remove('hidden');
+  });
+
+  $('wifi-manual-btn').addEventListener('click', () => showConnectForm());
+  $('wifi-cancel-btn').addEventListener('click', () => {
+    $('wifi-connect-form').classList.add('hidden');
+    $('wifi-network-list').classList.add('hidden');
+  });
+
+  $('wifi-connect-btn').addEventListener('click', async () => {
+    const ssid     = $('wifi-ssid').value.trim();
+    const password = $('wifi-password').value;
+    if (!ssid) { toast('Enter a network name'); return; }
+    $('wifi-connect-btn').textContent = 'Connecting…';
+    $('wifi-connect-btn').disabled = true;
+    $('wifi-error').classList.add('hidden');
+    const res = await api('POST', '/admin/wifi/connect', { ssid, password });
+    $('wifi-connect-btn').textContent = 'Connect';
+    $('wifi-connect-btn').disabled = false;
+    if (!res || res.error) {
+      $('wifi-error').textContent = [res?.error, res?.detail].filter(Boolean).join('\n') || 'Connection failed';
+      $('wifi-error').classList.remove('hidden');
+      return;
+    }
+    $('wifi-connect-form').classList.add('hidden');
+    $('wifi-network-list').classList.add('hidden');
+    toast(`✓ Connected to ${ssid}`);
+    loadWifiStatus();
+  });
+
+  loadWifiStatus();
 
   // ── Device controls ────────────────────────────────────────
   el.insertAdjacentHTML('beforeend', `
