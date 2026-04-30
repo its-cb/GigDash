@@ -719,8 +719,6 @@ async function renderDaily(el) {
   const tasks = await api('GET', '/parent/daily-tasks');
   if (!tasks) return;
 
-  const todayStr = new Date().toISOString().split('T')[0];
-
   function completedBy(task) {
     if (!task.completed_by) return [];
     return task.completed_by.split(',').map(Number);
@@ -773,14 +771,14 @@ async function renderDaily(el) {
   // Toggle daily completion
   el.querySelectorAll('.kid-toggle').forEach(btn => {
     btn.addEventListener('click', async () => {
-      const taskId   = btn.dataset.task;
-      const kidId    = btn.dataset.kid;
-      const wasDone  = btn.dataset.done === '1';
-      btn.dataset.done = wasDone ? '0' : '1';
-      btn.className    = `kid-toggle${!wasDone ? ` done-${kidClass(+kidId)}` : ''}`;
-      await api('POST', `/parent/daily-tasks/${taskId}/complete`,
-        { kid_id: +kidId, completed: !wasDone, date: todayStr });
+      const taskId  = btn.dataset.task;
+      const kidId   = btn.dataset.kid;
+      const wasDone = btn.dataset.done === '1';
+      const res = await api('POST', `/parent/daily-tasks/${taskId}/complete`,
+        { kid_id: +kidId, completed: !wasDone });
+      if (!res || res.error) { toast('⚠️ Failed to save — try again'); return; }
       toast(!wasDone ? '✓ Marked complete' : 'Marked incomplete');
+      renderTab('daily');
     });
   });
 
