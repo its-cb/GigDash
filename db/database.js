@@ -69,6 +69,11 @@ function initDatabase() {
       is_active   INTEGER NOT NULL DEFAULT 1
     );
 
+    CREATE TABLE IF NOT EXISTS settings (
+      key   TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS tracking_completions (
       id           INTEGER  PRIMARY KEY AUTOINCREMENT,
       task_id      INTEGER  NOT NULL,

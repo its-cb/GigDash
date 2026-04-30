@@ -1435,6 +1435,41 @@ async function renderSettings(el) {
 
   loadWifiStatus();
 
+  // ── Display schedule ───────────────────────────────────────
+  const schedRes = await api('GET', '/admin/display-schedule');
+  el.insertAdjacentHTML('beforeend', `
+    <div class="settings-section">
+      <div class="settings-section-title">Display Sleep Schedule</div>
+      <div class="card" style="padding:16px;display:flex;flex-direction:column;gap:12px">
+        <label style="display:flex;align-items:center;gap:10px;font-size:0.95rem;font-weight:500;cursor:pointer">
+          <input type="checkbox" id="schedule-enabled" ${schedRes?.enabled ? 'checked' : ''}
+                 style="width:18px;height:18px;cursor:pointer">
+          Enable sleep schedule
+        </label>
+        <div style="display:flex;gap:16px">
+          <div style="flex:1">
+            <div style="font-size:0.78rem;color:var(--muted);margin-bottom:4px">Sleep at</div>
+            <input type="time" id="schedule-sleep" value="${schedRes?.sleepTime || '22:00'}">
+          </div>
+          <div style="flex:1">
+            <div style="font-size:0.78rem;color:var(--muted);margin-bottom:4px">Wake at</div>
+            <input type="time" id="schedule-wake" value="${schedRes?.wakeTime || '06:00'}">
+          </div>
+        </div>
+        <button class="btn-primary" id="schedule-save-btn">Save Schedule</button>
+      </div>
+    </div>
+  `);
+
+  $('schedule-save-btn').addEventListener('click', async () => {
+    const res = await api('POST', '/admin/display-schedule', {
+      enabled:   $('schedule-enabled').checked,
+      sleepTime: $('schedule-sleep').value,
+      wakeTime:  $('schedule-wake').value
+    });
+    toast(res?.ok ? '✓ Schedule saved' : '⚠️ Failed to save');
+  });
+
   // ── Device controls ────────────────────────────────────────
   el.insertAdjacentHTML('beforeend', `
     <div class="settings-section">

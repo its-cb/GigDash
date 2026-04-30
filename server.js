@@ -65,7 +65,11 @@ app.post('/api/admin/reboot',   require('./middleware/auth'), (_req, res) => {
 app.post('/api/admin/shutdown', require('./middleware/auth'), (_req, res) => {
   if (isDocker) return res.status(400).json({ error: 'Not supported in Docker' });
   res.json({ ok: true });
-  setTimeout(() => { try { execSync('sudo systemctl poweroff'); } catch {} }, 500);
+  setTimeout(() => {
+    for (const cmd of ['sudo systemctl poweroff', 'sudo poweroff', 'sudo shutdown -h now']) {
+      try { execSync(cmd); break; } catch {}
+    }
+  }, 500);
 });
 
 // Update endpoints
@@ -159,7 +163,61 @@ app.post('/api/admin/wifi/connect', require('./middleware/auth'), (req, res) => 
   }
 });
 
+// ── Display sleep schedule ───────────────────────────────────────────────────
+let displaySchedule = { enabled: false, sleepTime: '22:00', wakeTime: '06:00' };
+
+function loadDisplaySchedule() {
+  try {
+    const db = require('./db/database').getDb();
+    db.prepare("SELECT key, value FROM settings WHERE key IN ('display_schedule_enabled','display_sleep_time','display_wake_time')")
+      .all().forEach(({ key, value }) => {
+        if (key === 'display_schedule_enabled') displaySchedule.enabled  = value === '1';
+        if (key === 'display_sleep_time')       displaySchedule.sleepTime = value;
+        if (key === 'display_wake_time')        displaySchedule.wakeTime  = value;
+      });
+  } catch {}
+}
+
+function setDisplay(on) {
+  const cmd = on ? 'xset dpms force on && xset s reset' : 'xset dpms force off';
+  try { execSync(`DISPLAY=:0 ${cmd}`, { timeout: 3000 }); } catch {}
+}
+
+function checkDisplaySchedule() {
+  if (!displaySchedule.enabled) return;
+  const now   = new Date();
+  const curr  = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  const { sleepTime, wakeTime } = displaySchedule;
+  // Crossing midnight (e.g. sleep=22:00 wake=06:00) vs same day (sleep=13:00 wake=15:00)
+  const shouldSleep = sleepTime > wakeTime
+    ? curr >= sleepTime || curr < wakeTime
+    : curr >= sleepTime && curr < wakeTime;
+  setDisplay(!shouldSleep);
+}
+
+app.get('/api/admin/display-schedule', require('./middleware/auth'), (_req, res) => {
+  res.json({ ...displaySchedule });
+});
+
+app.post('/api/admin/display-schedule', require('./middleware/auth'), (req, res) => {
+  const { enabled, sleepTime, wakeTime } = req.body || {};
+  const db = require('./db/database').getDb();
+  const upsert = db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)');
+  upsert.run('display_schedule_enabled', enabled ? '1' : '0');
+  if (sleepTime) upsert.run('display_sleep_time', sleepTime);
+  if (wakeTime)  upsert.run('display_wake_time',  wakeTime);
+  displaySchedule = {
+    enabled:   !!enabled,
+    sleepTime: sleepTime || displaySchedule.sleepTime,
+    wakeTime:  wakeTime  || displaySchedule.wakeTime
+  };
+  checkDisplaySchedule(); // apply immediately
+  res.json({ ok: true });
+});
+
 initDatabase();
+loadDisplaySchedule();
+setInterval(checkDisplaySchedule, 60000); // check every minute
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n🎯  GigDashboard is running\n`);

@@ -6,6 +6,16 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+    /* Pixel shift — 2px drift over 10 minutes to prevent screen burn */
+    @keyframes pixel-shift {
+      0%   { transform: translate(0px, 0px); }
+      25%  { transform: translate(2px, 0px); }
+      50%  { transform: translate(2px, 2px); }
+      75%  { transform: translate(0px, 2px); }
+      100% { transform: translate(0px, 0px); }
+    }
+    html { animation: pixel-shift 600s infinite linear; }
+
     :root {
       --bg:          #080d14;
       --surface:     #0f1724;
