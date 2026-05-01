@@ -63,6 +63,13 @@ router.post('/daily-tasks', (req, res) => {
   res.json({ id: lastInsertRowid });
 });
 
+router.patch('/daily-tasks/:id', (req, res) => {
+  const { is_trusted } = req.body || {};
+  getDb().prepare('UPDATE daily_tasks SET is_trusted = ? WHERE id = ?')
+    .run(is_trusted ? 1 : 0, req.params.id);
+  res.json({ ok: true });
+});
+
 router.delete('/daily-tasks/:id', (req, res) => {
   const db = getDb();
   db.prepare('DELETE FROM daily_completions WHERE task_id = ?').run(req.params.id);

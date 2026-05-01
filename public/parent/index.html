@@ -738,6 +738,7 @@ async function renderDaily(el) {
                     ${k.name.charAt(0)}
                   </button>`;
         }).join('');
+        const trusted = task.is_trusted;
         return `
           <div class="task-row" id="daily-row-${task.id}">
             <div style="flex:1">
@@ -745,6 +746,10 @@ async function renderDaily(el) {
               ${who}
             </div>
             <div class="kid-toggles">${toggles}</div>
+            <button class="kid-toggle ${trusted ? 'done-kid-1' : ''}"
+                    data-trust-daily="${task.id}" data-trusted="${trusted ? '1' : '0'}"
+                    title="${trusted ? 'Kids can self-complete (tap to revoke)' : 'Make self-service on tablet'}"
+                    style="font-size:1rem">✋</button>
             <button class="delete-btn" data-del-daily="${task.id}" title="Remove task">×</button>
           </div>`;
       }).join('');
@@ -778,6 +783,17 @@ async function renderDaily(el) {
         { kid_id: +kidId, completed: !wasDone });
       if (!res || res.error) { toast('⚠️ Failed to save — try again'); return; }
       toast(!wasDone ? '✓ Marked complete' : 'Marked incomplete');
+      renderTab('daily');
+    });
+  });
+
+  // Trusted toggle
+  el.querySelectorAll('[data-trust-daily]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const taskId    = btn.dataset.trustDaily;
+      const wasTrusted = btn.dataset.trusted === '1';
+      await api('PATCH', `/parent/daily-tasks/${taskId}`, { is_trusted: !wasTrusted });
+      toast(!wasTrusted ? '✋ Task is now self-service on tablet' : 'Task removed from tablet');
       renderTab('daily');
     });
   });

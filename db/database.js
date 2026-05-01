@@ -93,6 +93,11 @@ function initDatabase() {
     db.exec("ALTER TABLE gig_tasks ADD COLUMN type TEXT NOT NULL DEFAULT 'weekly'");
   }
 
+  const dailyCols = db.prepare('PRAGMA table_info(daily_tasks)').all().map(c => c.name);
+  if (!dailyCols.includes('is_trusted')) {
+    db.exec('ALTER TABLE daily_tasks ADD COLUMN is_trusted INTEGER NOT NULL DEFAULT 0');
+  }
+
   const parentCols = db.prepare('PRAGMA table_info(parents)').all().map(c => c.name);
   if (!parentCols.includes('recovery_code_hash')) {
     db.exec('ALTER TABLE parents ADD COLUMN recovery_code_hash TEXT');

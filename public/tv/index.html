@@ -51,87 +51,87 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 48px;
-      height: 72px;
+      padding: 0 20px;
+      height: 44px;
       background: var(--surface);
       border-bottom: 1px solid var(--border);
       flex-shrink: 0;
     }
 
     .logo {
-      font-size: 1.7rem;
+      font-size: 1.3rem;
       font-weight: 800;
       color: var(--gold);
       letter-spacing: -0.02em;
     }
 
     #date-el {
-      font-size: 1.1rem;
+      font-size: 0.9rem;
       color: var(--muted);
       font-weight: 500;
     }
 
     #parent-url {
-      font-size: 0.8rem;
+      font-size: 0.72rem;
       color: var(--muted);
-      margin-top: 2px;
+      margin-top: 1px;
       text-align: center;
     }
 
     #clock-el {
-      font-size: 1.5rem;
+      font-size: 1.2rem;
       font-weight: 700;
       color: var(--text);
       font-variant-numeric: tabular-nums;
-      min-width: 100px;
+      min-width: 80px;
       text-align: right;
     }
 
     /* ── TRACKING SECTION ───────────────────────────────────── */
     #tracking-bar {
       flex-shrink: 0;
-      padding: 14px 48px;
+      padding: 6px 20px;
       background: var(--surface);
       border-bottom: 2px solid var(--border);
       display: none;
       align-items: stretch;
-      gap: 24px;
+      gap: 10px;
       flex-wrap: wrap;
     }
 
     .tr-item {
       display: flex;
       align-items: center;
-      gap: 20px;
+      gap: 12px;
       background: var(--surface2);
       border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 14px 24px;
+      border-radius: 10px;
+      padding: 6px 14px;
       flex: 1;
     }
 
     .tr-title {
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.12em;
       color: var(--muted);
-      min-width: 120px;
+      min-width: 100px;
       flex-shrink: 0;
     }
 
-    .tr-steps { display: flex; gap: 12px; }
+    .tr-steps { display: flex; gap: 8px; }
 
     .tr-step-block {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 4px;
-      padding: 10px 24px;
-      border-radius: 10px;
+      gap: 2px;
+      padding: 5px 16px;
+      border-radius: 8px;
       border: 1px solid var(--border);
       background: var(--bg);
-      min-width: 130px;
+      min-width: 110px;
     }
 
     .tr-step-block.done {
@@ -164,10 +164,10 @@
     }
 
     .kid-col {
-      padding: 28px 36px;
+      padding: 10px 14px;
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 8px;
       overflow: hidden;
       border-top: 4px solid transparent;
       border-right: 1px solid var(--border);
@@ -179,13 +179,13 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding-bottom: 20px;
+      padding-bottom: 8px;
       border-bottom: 1px solid var(--border);
       flex-shrink: 0;
     }
 
     .kid-name {
-      font-size: 2.4rem;
+      font-size: 2.2rem;
       font-weight: 900;
       letter-spacing: -0.03em;
     }
@@ -195,31 +195,31 @@
     .piggy-bank {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
       background: var(--gold-dim);
       border: 1px solid var(--gold);
-      border-radius: 14px;
-      padding: 10px 20px;
+      border-radius: 10px;
+      padding: 5px 12px;
     }
 
-    .piggy-icon { font-size: 1.8rem; }
+    .piggy-icon { font-size: 1.5rem; }
 
     .piggy-amount {
-      font-size: 2rem;
+      font-size: 1.9rem;
       font-weight: 800;
       color: var(--gold);
       font-variant-numeric: tabular-nums;
     }
 
     /* ── SECTIONS ───────────────────────────────────────────── */
-    .section { display: flex; flex-direction: column; gap: 8px; overflow: hidden; flex-shrink: 0; }
+    .section { display: flex; flex-direction: column; gap: 4px; overflow: hidden; flex-shrink: 0; }
     .section.gig-section { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
 
     .section-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 4px;
+      margin-bottom: 2px;
     }
 
     .section-title {
@@ -254,7 +254,7 @@
       height: 4px;
       background: var(--border);
       border-radius: 2px;
-      margin-bottom: 8px;
+      margin-bottom: 3px;
     }
     .progress-fill {
       height: 100%;
@@ -264,8 +264,8 @@
     /* progress-fill color set via inline style from DB */
 
     /* ── TASK ITEMS ─────────────────────────────────────────── */
-    .task-list { display: flex; flex-direction: column; gap: 7px; overflow: hidden; }
-    .gig-section .task-list { flex: 1; overflow-y: auto; gap: 7px; }
+    .task-list { display: flex; flex-direction: column; gap: 3px; overflow: hidden; }
+    .gig-section .task-list { flex: 1; overflow-y: auto; gap: 3px; }
     .gig-section .task-list::-webkit-scrollbar { width: 4px; }
     .gig-section .task-list::-webkit-scrollbar-track { background: transparent; }
     .gig-section .task-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
@@ -273,12 +273,12 @@
     .task-item {
       display: flex;
       align-items: center;
-      gap: 12px;
-      padding: 11px 14px;
+      gap: 10px;
+      padding: 5px 10px;
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 10px;
-      font-size: 1.05rem;
+      border-radius: 8px;
+      font-size: 1.2rem;
       font-weight: 500;
       transition: border-color 0.2s, opacity 0.2s;
     }
@@ -403,6 +403,7 @@
         <div class="task-item ${t.completed ? 'done' : ''}">
           <div class="check-circle">${t.completed ? '✓' : ''}</div>
           <span class="task-label">${t.title}</span>
+          ${t.is_trusted && !t.completed ? '<span style="font-size:0.75rem;color:var(--muted);margin-left:auto">✋ tablet</span>' : ''}
         </div>
       `).join('');
 

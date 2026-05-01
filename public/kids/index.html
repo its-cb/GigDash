@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>GigDashboard — Kids</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #080d14;
+      --surface:  #0f1724;
+      --surface2: #1a2233;
+      --border:   #1e2d45;
+      --text:     #e8f0fe;
+      --muted:    #5a7099;
+      --green:    #22c55e;
+      --green-dim:#0d2b1a;
+      --gold:     #f59e0b;
+      --red:      #ef4444;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    }
+
+    /* ── HEADER ─────────────────────────────────────────────── */
+    #header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 32px;
+      height: 64px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .logo    { font-size: 1.4rem; font-weight: 800; color: var(--gold); }
+    #clock-el{ font-size: 1.2rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+    #date-el { font-size: 0.82rem; color: var(--muted); text-align: right; }
+
+    /* ── CONTENT ─────────────────────────────────────────────── */
+    #content { padding: 24px 24px 60px; max-width: 860px; margin: 0 auto; }
+
+    .section-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      margin: 28px 0 12px;
+    }
+    .section-title:first-child { margin-top: 0; }
+
+    /* ── TASK CARDS ──────────────────────────────────────────── */
+    .task-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px 20px;
+      margin-bottom: 12px;
+    }
+
+    .task-top {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .task-title {
+      flex: 1;
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+
+    .done-btn {
+      padding: 12px 22px;
+      border-radius: 30px;
+      border: 2px solid #3b82f6;
+      background: #0c1e3d;
+      color: #3b82f6;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      transition: transform 0.1s, opacity 0.1s;
+      flex-shrink: 0;
+    }
+    .done-btn:active { transform: scale(0.95); }
+
+    /* who-did-it chips */
+    .completions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .completion-chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--green-dim);
+      border: 1px solid var(--green);
+      border-radius: 20px;
+      padding: 4px 10px 4px 12px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--green);
+    }
+
+    .undo-btn {
+      background: none;
+      border: none;
+      color: var(--green);
+      opacity: 0.6;
+      font-size: 1rem;
+      cursor: pointer;
+      padding: 0 2px;
+      line-height: 1;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .undo-btn:active { opacity: 1; }
+
+    /* ── TRACKING ────────────────────────────────────────────── */
+    .tracking-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px 20px;
+      margin-bottom: 12px;
+    }
+
+    .tracking-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 14px;
+    }
+
+    .step-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 0;
+      border-top: 1px solid var(--border);
+    }
+    .step-row:first-of-type { border-top: none; }
+
+    .step-label {
+      min-width: 90px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .step-btn {
+      padding: 10px 20px;
+      border-radius: 30px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      transition: transform 0.1s;
+      font-family: inherit;
+    }
+    .step-btn:active { transform: scale(0.95); }
+
+    .step-btn.incomplete {
+      border: 2px solid #3b82f6;
+      background: #0c1e3d;
+      color: #3b82f6;
+    }
+
+    .step-btn.complete {
+      border: 2px solid var(--green);
+      background: var(--green-dim);
+      color: var(--green);
+    }
+
+    /* ── PROMPT OVERLAY ──────────────────────────────────────── */
+    #prompt-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(4px);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    #prompt-overlay.open { display: flex; }
+
+    #prompt-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 32px;
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    #prompt-heading {
+      font-size: 1.5rem;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    #prompt-sub {
+      font-size: 1rem;
+      color: var(--muted);
+      text-align: center;
+      margin-top: -12px;
+    }
+
+    #prompt-input {
+      width: 100%;
+      padding: 16px 20px;
+      font-size: 1.4rem;
+      font-weight: 600;
+      text-align: center;
+      background: var(--surface2);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      color: var(--text);
+      outline: none;
+      font-family: inherit;
+      letter-spacing: 0.05em;
+    }
+    #prompt-input:focus { border-color: var(--green); }
+
+    #prompt-error {
+      color: var(--red);
+      font-size: 0.9rem;
+      text-align: center;
+      min-height: 20px;
+    }
+
+    #prompt-submit {
+      padding: 16px;
+      background: var(--green);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #prompt-submit:active { opacity: 0.85; }
+
+    #prompt-cancel {
+      padding: 12px;
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 0.95rem;
+      cursor: pointer;
+      font-family: inherit;
+      text-align: center;
+    }
+
+    /* ── EMPTY ───────────────────────────────────────────────── */
+    .empty {
+      text-align: center;
+      padding: 40px 24px;
+      color: var(--muted);
+      font-size: 1rem;
+      background: var(--surface);
+      border-radius: 16px;
+      border: 1px dashed var(--border);
+      line-height: 1.6;
+    }
+
+    #refresh-dot {
+      position: fixed;
+      bottom: 16px;
+      right: 20px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--muted);
+      opacity: 0.4;
+      transition: background 0.2s, opacity 0.2s;
+    }
+    #refresh-dot.active { background: var(--green); opacity: 1; }
+  </style>
+</head>
+<body>
+
+<div id="header">
+  <div class="logo">💰 GigDashboard</div>
+  <div style="text-align:right">
+    <div id="clock-el"></div>
+    <div id="date-el"></div>
+  </div>
+</div>
+
+<div id="content"></div>
+
+<!-- Prompt overlay -->
+<div id="prompt-overlay">
+  <div id="prompt-card">
+    <div id="prompt-heading">Who did this?</div>
+    <div id="prompt-sub"></div>
+    <input id="prompt-input" type="text" placeholder="Enter your full name…"
+           autocomplete="off" autocorrect="off" autocapitalize="words" spellcheck="false">
+    <div id="prompt-error"></div>
+    <button id="prompt-submit">✓ Mark Done</button>
+    <button id="prompt-cancel">Cancel</button>
+  </div>
+</div>
+
+<div id="refresh-dot"></div>
+
+<script>
+  // ── Clock ────────────────────────────────────────────────
+  function updateClock() {
+    const now = new Date();
+    document.getElementById('clock-el').textContent =
+      now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    document.getElementById('date-el').textContent =
+      now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  // ── State ────────────────────────────────────────────────
+  let kids = [];
+  let pendingAction = null; // { type, taskId, step? }
+
+  // ── API ──────────────────────────────────────────────────
+  async function api(method, path, body) {
+    const res = await fetch('/api/kids-panel' + path, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: body ? JSON.stringify(body) : undefined
+    });
+    return res.json();
+  }
+
+  function pushToTV() {
+    fetch('/api/push', { method: 'POST', headers: { 'Content-Type': 'application/json' } }).catch(() => {});
+  }
+
+  // ── Kid matching ─────────────────────────────────────────
+  function matchKid(input) {
+    const s = input.trim().toLowerCase();
+    if (!s) return null;
+    return kids.find(k => k.name.toLowerCase() === s);
+  }
+
+  // ── Prompt ───────────────────────────────────────────────
+  function openPrompt(action, subText) {
+    pendingAction = action;
+    document.getElementById('prompt-sub').textContent    = subText;
+    document.getElementById('prompt-input').value        = '';
+    document.getElementById('prompt-error').textContent  = '';
+    document.getElementById('prompt-overlay').classList.add('open');
+    setTimeout(() => document.getElementById('prompt-input').focus(), 100);
+  }
+
+  function closePrompt() {
+    pendingAction = null;
+    document.getElementById('prompt-overlay').classList.remove('open');
+  }
+
+  async function submitPrompt() {
+    const input = document.getElementById('prompt-input').value;
+    const kid   = matchKid(input);
+    if (!kid) {
+      const names = kids.map(k => k.name).join(' or ');
+      document.getElementById('prompt-error').textContent = `Name not recognized — enter your full name: ${names}`;
+      return;
+    }
+    document.getElementById('prompt-error').textContent = '';
+
+    const { type, taskId, step } = pendingAction;
+    if (type === 'daily') {
+      await api('POST', `/daily/${taskId}/complete`, { kid_id: kid.id, completed: true });
+    } else if (type === 'tracking') {
+      await api('POST', `/tracking/${taskId}/step/${step}/complete`, { kid_id: kid.id, completed: true });
+    }
+    pushToTV();
+    closePrompt();
+    fetchData();
+  }
+
+  document.getElementById('prompt-submit').addEventListener('click', submitPrompt);
+  document.getElementById('prompt-cancel').addEventListener('click', closePrompt);
+  document.getElementById('prompt-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') submitPrompt();
+  });
+  document.getElementById('prompt-overlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('prompt-overlay')) closePrompt();
+  });
+
+  // ── Render ───────────────────────────────────────────────
+  function completedBy(task) {
+    if (!task.completed_by) return [];
+    return task.completed_by.toString().split(',').map(Number);
+  }
+
+  function render(data) {
+    kids = data.kids;
+    const { dailyTasks, trackingTasks } = data;
+    const el = document.getElementById('content');
+    let html = '';
+
+    // ── Daily Tasks ───────────────────────────────────────
+    if (dailyTasks.length > 0) {
+      html += `<div class="section-title">✋ Daily Tasks</div>`;
+      html += dailyTasks.map(task => {
+        const cb    = completedBy(task);
+        const chips = cb.map(kidId => {
+          const k = kids.find(k => k.id === kidId);
+          return k ? `
+            <div class="completion-chip">
+              ✓ ${k.name}
+              <button class="undo-btn"
+                      data-undo-daily="${task.id}" data-kid="${k.id}"
+                      title="Undo ${k.name}">×</button>
+            </div>` : '';
+        }).join('');
+
+        return `
+          <div class="task-card">
+            <div class="task-top">
+              <div class="task-title">${task.title}</div>
+              <button class="done-btn" data-daily-done="${task.id}">Mark Done ✓</button>
+            </div>
+            ${chips ? `<div class="completions">${chips}</div>` : ''}
+          </div>`;
+      }).join('');
+    }
+
+    // ── Tracking ──────────────────────────────────────────
+    if (trackingTasks.length > 0) {
+      html += `<div class="section-title">📋 Household Tracking</div>`;
+      html += trackingTasks.map(task => {
+        function stepRow(num, label, done, kidId) {
+          const k = done && kidId !== null && kidId !== undefined ? kids.find(k => k.id == kidId) : null;
+          const whoLabel = done ? (k ? k.name : 'Parent') : null;
+          return `
+            <div class="step-row">
+              <span class="step-label">${label}</span>
+              ${done
+                ? `<button class="step-btn complete"
+                           data-undo-tracking="${task.id}" data-step="${num}">
+                     ✓ ${whoLabel}
+                   </button>`
+                : `<button class="step-btn incomplete"
+                           data-tracking-done="${task.id}" data-step="${num}" data-label="${label}">
+                     Incomplete
+                   </button>`}
+            </div>`;
+        }
+
+        return `
+          <div class="tracking-card">
+            <div class="tracking-title">${task.title}</div>
+            ${stepRow(1, task.step1_label, task.step1_done, task.step1_kid_id)}
+            ${stepRow(2, task.step2_label, task.step2_done, task.step2_kid_id)}
+          </div>`;
+      }).join('');
+    }
+
+    if (!dailyTasks.length && !trackingTasks.length) {
+      html = '<div class="empty">No self-service tasks yet.<br>Ask a parent to mark some daily tasks as trusted.</div>';
+    }
+
+    el.innerHTML = html;
+    attachListeners();
+  }
+
+  function attachListeners() {
+    // Daily "Mark Done" button
+    document.querySelectorAll('[data-daily-done]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        openPrompt(
+          { type: 'daily', taskId: btn.dataset.dailyDone },
+          btn.closest('.task-card').querySelector('.task-title').textContent
+        );
+      });
+    });
+
+    // Daily undo
+    document.querySelectorAll('[data-undo-daily]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        await api('POST', `/daily/${btn.dataset.undoDaily}/complete`,
+          { kid_id: +btn.dataset.kid, completed: false });
+        pushToTV();
+        fetchData();
+      });
+    });
+
+    // Tracking "Mark Done" button
+    document.querySelectorAll('[data-tracking-done]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const title = btn.closest('.tracking-card').querySelector('.tracking-title').textContent;
+        openPrompt(
+          { type: 'tracking', taskId: btn.dataset.trackingDone, step: btn.dataset.step },
+          `${title} — ${btn.dataset.label}`
+        );
+      });
+    });
+
+    // Tracking undo (tapping the green complete button)
+    document.querySelectorAll('[data-undo-tracking]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        await api('POST', `/tracking/${btn.dataset.undoTracking}/step/${btn.dataset.step}/complete`,
+          { completed: false });
+        pushToTV();
+        fetchData();
+      });
+    });
+  }
+
+  // ── Fetch & poll ─────────────────────────────────────────
+  const dot = document.getElementById('refresh-dot');
+
+  async function fetchData() {
+    try {
+      const data = await api('GET', '/');
+      render(data);
+      dot.classList.add('active');
+      setTimeout(() => dot.classList.remove('active'), 600);
+    } catch (e) {
+      console.error('Kids panel fetch failed', e);
+    }
+  }
+
+  fetchData();
+  setInterval(fetchData, 15000);
+</script>
+</body>
+</html>

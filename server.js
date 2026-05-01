@@ -31,12 +31,14 @@ app.use(express.json());
 // Static assets
 app.use('/tv',     express.static(path.join(__dirname, 'public/tv')));
 app.use('/parent', express.static(path.join(__dirname, 'public/parent')));
+app.use('/kids',   express.static(path.join(__dirname, 'public/kids')));
 app.get('/', (_req, res) => res.redirect('/tv'));
 
 // API
-app.use('/api/auth',      require('./routes/auth'));
-app.use('/api/dashboard', require('./routes/dashboard'));
-app.use('/api/parent',    require('./middleware/auth'), require('./routes/parent'));
+app.use('/api/auth',       require('./routes/auth'));
+app.use('/api/dashboard',  require('./routes/dashboard'));
+app.use('/api/parent',     require('./middleware/auth'), require('./routes/parent'));
+app.use('/api/kids-panel', require('./routes/kids-panel'));
 
 // Push signal — triggers immediate TV data refresh
 let lastPush = Date.now();
