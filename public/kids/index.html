@@ -370,9 +370,26 @@
   // ── Prompt ───────────────────────────────────────────────
   function openPrompt(action, subText) {
     pendingAction = action;
-    document.getElementById('prompt-sub').textContent    = subText;
-    document.getElementById('prompt-input').value        = '';
-    document.getElementById('prompt-error').textContent  = '';
+    document.getElementById('prompt-heading').textContent  = 'Who did this?';
+    document.getElementById('prompt-sub').textContent      = subText;
+    document.getElementById('prompt-input').value          = '';
+    document.getElementById('prompt-input').placeholder    = 'Enter your full name…';
+    document.getElementById('prompt-error').textContent    = '';
+    document.getElementById('prompt-submit').textContent   = '✓ Mark Done';
+    document.getElementById('prompt-submit').style.background = 'var(--green)';
+    document.getElementById('prompt-overlay').classList.add('open');
+    setTimeout(() => document.getElementById('prompt-input').focus(), 100);
+  }
+
+  function openRemovePrompt(action, kidName, taskTitle) {
+    pendingAction = action;
+    document.getElementById('prompt-heading').textContent  = 'Are you sure?';
+    document.getElementById('prompt-sub').textContent      = `Type REMOVE to undo ${kidName}'s completion of "${taskTitle}"`;
+    document.getElementById('prompt-input').value          = '';
+    document.getElementById('prompt-input').placeholder    = 'Type REMOVE to confirm…';
+    document.getElementById('prompt-error').textContent    = '';
+    document.getElementById('prompt-submit').textContent   = 'Remove';
+    document.getElementById('prompt-submit').style.background = 'var(--red)';
     document.getElementById('prompt-overlay').classList.add('open');
     setTimeout(() => document.getElementById('prompt-input').focus(), 100);
   }
@@ -383,16 +400,34 @@
   }
 
   async function submitPrompt() {
-    const input = document.getElementById('prompt-input').value;
-    const kid   = matchKid(input);
+    const input  = document.getElementById('prompt-input').value;
+    const { type, taskId, kidId, step } = pendingAction;
+
+    // Remove confirmation flow
+    if (type === 'undo-daily' || type === 'undo-tracking') {
+      if (input.trim().toLowerCase() !== 'remove') {
+        document.getElementById('prompt-error').textContent = 'Type REMOVE (all caps or lowercase) to confirm';
+        return;
+      }
+      if (type === 'undo-daily') {
+        await api('POST', `/daily/${taskId}/complete`, { kid_id: kidId, completed: false });
+      } else {
+        await api('POST', `/tracking/${taskId}/step/${step}/complete`, { completed: false });
+      }
+      pushToTV();
+      closePrompt();
+      fetchData();
+      return;
+    }
+
+    // Name-entry flow (marking done)
+    const kid = matchKid(input);
     if (!kid) {
       const names = kids.map(k => k.name).join(' or ');
       document.getElementById('prompt-error').textContent = `Name not recognized — enter your full name: ${names}`;
       return;
     }
     document.getElementById('prompt-error').textContent = '';
-
-    const { type, taskId, step } = pendingAction;
     if (type === 'daily') {
       await api('POST', `/daily/${taskId}/complete`, { kid_id: kid.id, completed: true });
     } else if (type === 'tracking') {
@@ -501,13 +536,15 @@
       });
     });
 
-    // Daily undo
+    // Daily undo — requires typing REMOVE
     document.querySelectorAll('[data-undo-daily]').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        await api('POST', `/daily/${btn.dataset.undoDaily}/complete`,
-          { kid_id: +btn.dataset.kid, completed: false });
-        pushToTV();
-        fetchData();
+      btn.addEventListener('click', () => {
+        const kidName   = kids.find(k => k.id === +btn.dataset.kid)?.name || 'this kid';
+        const taskTitle = btn.closest('.task-card').querySelector('.task-title').textContent;
+        openRemovePrompt(
+          { type: 'undo-daily', taskId: btn.dataset.undoDaily, kidId: +btn.dataset.kid },
+          kidName, taskTitle
+        );
       });
     });
 
@@ -522,13 +559,15 @@
       });
     });
 
-    // Tracking undo (tapping the green complete button)
+    // Tracking undo — requires typing REMOVE
     document.querySelectorAll('[data-undo-tracking]').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        await api('POST', `/tracking/${btn.dataset.undoTracking}/step/${btn.dataset.step}/complete`,
-          { completed: false });
-        pushToTV();
-        fetchData();
+      btn.addEventListener('click', () => {
+        const whoLabel  = btn.textContent.replace('✓', '').trim();
+        const taskTitle = btn.closest('.tracking-card').querySelector('.tracking-title').textContent;
+        openRemovePrompt(
+          { type: 'undo-tracking', taskId: btn.dataset.undoTracking, step: btn.dataset.step },
+          whoLabel, taskTitle
+        );
       });
     });
   }
