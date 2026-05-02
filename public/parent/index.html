@@ -993,6 +993,7 @@ async function renderGigs(el) {
         const res = await api('POST', `/parent/gig-tasks/${taskId}/parent-claim`, { claimed: !wasClaimed });
         if (res?.error) { toast(`⚠️ ${res.error}`); return; }
         toast(!wasClaimed ? '👨 Marked as parent handled' : 'Released for kids');
+        api('POST', '/push');
         renderTab('gigs');
       });
     });

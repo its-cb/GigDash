@@ -49,7 +49,8 @@ app.post('/api/push', require('./middleware/auth'), (_req, res) => {
 });
 
 // TV reload signal — triggers full page reload on the TV
-let lastReload = 0;
+// Initialized to Date.now() so any server restart (including after updates) triggers a fresh reload
+let lastReload = Date.now();
 app.get( '/api/admin/tv-reload', (_req, res) => res.json({ ts: lastReload }));
 app.post('/api/admin/tv-reload', require('./middleware/auth'), (_req, res) => {
   lastReload = Date.now();
