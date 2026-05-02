@@ -1,26 +1,70 @@
 # GigDashboard
 
-A household chore and earnings tracker for kids. Built for a TV-connected display with a mobile parent control panel.
+A household chore and earnings tracker for kids. Built for a TV-connected display with a mobile parent control panel and a touch-friendly kids tablet page.
 
 ![Docker](https://img.shields.io/badge/docker-itscb%2Fgigdash-blue?logo=docker)
 
+---
+
+## Screenshots
+
+| TV Dashboard | Parent Panel | Kids Tablet |
+|:---:|:---:|:---:|
+| ![TV Dashboard](docs/images/tv-dashboard.png) | ![Parent Panel](docs/images/parent-panel.png) | ![Kids Tablet](docs/images/kids-tablet.png) |
+
+---
+
 ## Features
 
-- **TV Dashboard** — full-screen display, one column per kid, scales to any number of kids
-- **Daily Expectations** — tasks that must be completed before gig tasks unlock
-- **Gig Tasks** — paid chores with dollar values; first-come-first-serve between kids
-  - Weekly (rolling 7 days), Bi-weekly (14 days), or Permanent types
-- **Tracking Tasks** — two-step non-gating tasks (e.g. Feed the dogs — Morning / Evening)
-- **Piggy Bank** — running earnings total per kid with cash-out support
-- **Parent Dashboard** — mobile-friendly web app with JWT login
-  - Daily task management, gig task management, tracking, earnings
-  - **Settings tab** — kids management, color picker, password change, recovery code, WiFi setup, device controls, in-app updates
+### TV Dashboard (`/tv`)
+- Full-screen display, one column per kid, scales to any number of kids
+- Completed tasks float to the top of each list so remaining work is immediately visible
+- Auto-reloads after server updates to clear stale JS
+- Pixel shift animation (2px, 10-minute cycle) to prevent screen burn-in
+
+### Daily Expectations
+- Tasks that must be completed before gig tasks unlock per kid
+- **Joint tasks** — one completion by any kid marks the task done for everyone (great for shared chores like tidying the living room)
+- **Tablet self-service** — mark individual tasks as self-service so kids can complete them from the tablet without parent involvement
+
+### Gig Tasks
+- Paid chores with dollar values; first-come-first-served between kids
+- Types: **Weekly** (rolling 7 days), **Bi-weekly** (14 days), or **Permanent**
+- **Parent-handled** — parent can claim a gig task to prevent kids from taking credit (e.g. parent did it themselves)
+- **Inline editing** — rename or change the payout of any incomplete gig task directly from the parent panel
+
+### Tracking Tasks
+- Two-step non-gating tasks (e.g. Feed the dogs — Morning / Evening)
+- Assignable to a kid or a parent per step
+
+### Piggy Bank & Earnings
+- Running earnings total per kid displayed on the TV dashboard
+- **Manual transactions** — add or deduct money with an optional note (e.g. specialty coffee, store purchase)
+- Full transaction history visible in the Earnings tab
+- Cash-out resets the piggy bank to $0 and clears all history
+
+### Kids Tablet (`/kids`)
+- Touch-optimized interface for kids to self-complete trusted daily tasks and tracking steps
+- Full-name verification before marking anything complete
+- No login required — designed for a shared tablet on the home network
+
+### Parent Panel (`/parent`)
+- Mobile-friendly web app with JWT login
+- Tabs: Daily Tasks, Tracking, Gig Tasks, Earnings, Settings
+- **Settings tab:**
+  - Kid management — rename, recolor (10 options), add, remove
+  - Password change and recovery code generation
+  - WiFi wizard (scan, select, connect without SSH)
+  - Display sleep schedule — auto-sleep/wake on a daily timer (non-Docker only)
+  - In-app updates — pull the latest version from GitHub and restart with one tap
+  - Device controls — Reload TV, Reboot, Shutdown
 
 ---
 
 ## Running with Docker
 
 > **Note:** Docker support is included but has not been end-to-end tested. If you run into issues please open a GitHub issue.
+> The display sleep schedule is not available in Docker deployments.
 
 ### Quick start
 
@@ -32,6 +76,7 @@ JWT_SECRET=$(openssl rand -hex 32) docker-compose up -d
 The app will be available at:
 - TV Dashboard → `http://<host-ip>:3000/tv`
 - Parent Panel → `http://<host-ip>:3000/parent`
+- Kids Tablet → `http://<host-ip>:3000/kids`
 
 ### First-time setup
 
@@ -77,9 +122,9 @@ git clone https://github.com/its-cb/GigDash.git
 cd GigDash
 ```
 
-**2. Add a shell alias for easy deploys**
+**2. Add a shell function for easy deploys**
 ```bash
-echo 'alias deploygigdash="bash ~/path/to/GigDash/deploy.sh"' >> ~/.zshrc
+echo 'deploygigdash() { bash ~/path/to/GigDash/deploy.sh "${@}"; }' >> ~/.zshrc
 source ~/.zshrc
 ```
 
@@ -100,7 +145,7 @@ git pull && deploygigdash <device-ip> <username>
 
 The database is preserved between deploys — only code files are updated.
 
-> **Tip:** Once deployed, you can apply future updates directly from the **Settings → Updates** tab in the parent dashboard without needing to redeploy from your Mac.
+> **Tip:** Once deployed, you can apply future updates directly from the **Settings → Updates** tab in the parent dashboard without needing to redeploy from your Mac. The TV auto-reloads after each update to clear any cached JS.
 
 See [SETUP.md](SETUP.md) for full details including systemd configuration, kiosk mode, and optional nginx setup.
 
@@ -125,7 +170,7 @@ Kids are managed directly from the **Settings tab** in the parent dashboard — 
 - Rename any kid
 - Change their color (10 color options)
 - Add new kids
-- Remove a kid
+- Remove a kid (clears all their task history)
 
 The TV dashboard automatically adjusts its layout to however many kids are configured.
 
