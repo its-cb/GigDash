@@ -1159,19 +1159,53 @@ async function renderEarnings(el) {
     return `
       <div class="earnings-card">
         <div class="earnings-name" style="color:${color}">${k.name}</div>
-        <div class="earnings-total">${fmt(k.total)}</div>
+        <div class="earnings-total" id="earn-total-${k.id}">${fmt(k.total)}</div>
         <div class="cashout-row">
           <span class="cashout-note">${k.completions} tasks completed</span>
-          <button class="btn-sm btn-gold" data-cashout="${k.id}" data-name="${k.name}">
-            Cash Out 💸
-          </button>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
+            <button class="btn-sm btn-green" data-tx-add="${k.id}" data-name="${k.name}">+ Add</button>
+            <button class="btn-sm btn-red"   data-tx-sub="${k.id}" data-name="${k.name}">− Deduct</button>
+            <button class="btn-sm btn-gold"  data-cashout="${k.id}" data-name="${k.name}">Cash Out 💸</button>
+          </div>
+        </div>
+        <div id="tx-form-${k.id}" class="hidden"
+             style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px;display:flex;flex-direction:column;gap:8px">
+          <div id="tx-label-${k.id}" style="font-size:0.85rem;font-weight:600;color:var(--muted)"></div>
+          <div style="display:flex;gap:8px">
+            <input type="number" id="tx-amount-${k.id}" placeholder="Amount" min="0.01" step="0.25" style="flex:1;max-width:120px">
+            <input type="text"   id="tx-note-${k.id}"   placeholder="Note (optional)" style="flex:2">
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn-primary" id="tx-save-${k.id}" style="flex:1;padding:10px">Save</button>
+            <button class="btn-sm btn-gray" id="tx-cancel-${k.id}">Cancel</button>
+          </div>
         </div>
       </div>
     `;
   }).join('');
 
-  el.innerHTML = cards || '<div class="loading">No data yet.</div>';
+  // Recent manual transactions
+  const txRows = (data.transactions || []).length === 0 ? '' : `
+    <div class="earnings-card" style="padding:16px">
+      <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:10px">Recent Adjustments</div>
+      ${data.transactions.map(tx => {
+        const kid  = data.summary.find(k => k.id === tx.kid_id);
+        const color = kid ? `var(--${kidClass(kid.id)})` : 'var(--muted)';
+        const sign  = tx.amount >= 0 ? '+' : '';
+        return `
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+            <span style="font-size:0.85rem;font-weight:700;color:${color};min-width:60px">${kid?.name || '—'}</span>
+            <span style="font-size:0.85rem;font-weight:700;color:${tx.amount >= 0 ? 'var(--green)' : 'var(--red)'}">${sign}${fmt(tx.amount)}</span>
+            <span style="font-size:0.82rem;color:var(--muted);flex:1">${tx.note || '—'}</span>
+            <span style="font-size:0.75rem;color:var(--muted)">${tx.date}</span>
+          </div>`;
+      }).join('')}
+    </div>
+  `;
 
+  el.innerHTML = (cards || '<div class="loading">No data yet.</div>') + txRows;
+
+  // Cash out
   el.querySelectorAll('[data-cashout]').forEach(btn => {
     btn.addEventListener('click', async () => {
       const name = btn.dataset.name;
@@ -1183,6 +1217,36 @@ async function renderEarnings(el) {
       }
     });
   });
+
+  // Add / Deduct buttons — open inline form
+  function openTxForm(kidId, name, sign) {
+    $(`tx-form-${kidId}`).classList.remove('hidden');
+    $(`tx-label-${kidId}`).textContent = sign > 0 ? `Adding to ${name}'s piggy bank` : `Deducting from ${name}'s piggy bank`;
+    $(`tx-amount-${kidId}`).value = '';
+    $(`tx-note-${kidId}`).value   = '';
+    $(`tx-amount-${kidId}`).focus();
+
+    $(`tx-save-${kidId}`).onclick = async () => {
+      const raw = parseFloat($(`tx-amount-${kidId}`).value);
+      if (isNaN(raw) || raw <= 0) { toast('Enter a valid amount'); return; }
+      const amount = sign * raw;
+      const note   = $(`tx-note-${kidId}`).value.trim() || null;
+      const res = await api('POST', `/parent/kids/${kidId}/transaction`, { amount, note });
+      if (res?.error) { toast(`⚠️ ${res.error}`); return; }
+      toast(sign > 0 ? `+ ${fmt(raw)} added to ${name}'s bank` : `− ${fmt(raw)} deducted from ${name}'s bank`);
+      api('POST', '/push');
+      renderTab('earnings');
+    };
+
+    $(`tx-cancel-${kidId}`).onclick = () => $(`tx-form-${kidId}`).classList.add('hidden');
+  }
+
+  el.querySelectorAll('[data-tx-add]').forEach(btn =>
+    btn.addEventListener('click', () => openTxForm(btn.dataset.txAdd, btn.dataset.name, 1))
+  );
+  el.querySelectorAll('[data-tx-sub]').forEach(btn =>
+    btn.addEventListener('click', () => openTxForm(btn.dataset.txSub, btn.dataset.name, -1))
+  );
 }
 
 // ── SETTINGS ─────────────────────────────────────────────────

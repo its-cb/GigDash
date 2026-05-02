@@ -67,9 +67,10 @@ router.get('/', (req, res) => {
       ORDER BY gt.value DESC, gt.id
     `).all(kid.id, kid.id, kid.id);
 
-    const { total } = db.prepare(
-      'SELECT COALESCE(SUM(value), 0) AS total FROM gig_completions WHERE kid_id = ?'
-    ).get(kid.id);
+    const { total } = db.prepare(`
+      SELECT COALESCE((SELECT SUM(value)  FROM gig_completions  WHERE kid_id = ?), 0)
+           + COALESCE((SELECT SUM(amount) FROM kid_transactions WHERE kid_id = ?), 0) AS total
+    `).get(kid.id, kid.id);
 
     return { ...kid, dailyTasks, gigTasks, allDailyDone, totalEarnings: total };
   });

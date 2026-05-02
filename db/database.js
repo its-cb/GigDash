@@ -81,6 +81,15 @@ function initDatabase() {
       FOREIGN KEY (task_id) REFERENCES gig_tasks(id)
     );
 
+    CREATE TABLE IF NOT EXISTS kid_transactions (
+      id      INTEGER PRIMARY KEY AUTOINCREMENT,
+      kid_id  INTEGER NOT NULL,
+      amount  REAL    NOT NULL,
+      note    TEXT,
+      date    TEXT    NOT NULL,
+      FOREIGN KEY (kid_id) REFERENCES kids(id)
+    );
+
     CREATE TABLE IF NOT EXISTS tracking_completions (
       id           INTEGER  PRIMARY KEY AUTOINCREMENT,
       task_id      INTEGER  NOT NULL,

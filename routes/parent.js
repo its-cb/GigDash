@@ -298,10 +298,15 @@ router.get('/earnings', (req, res) => {
   const db = getDb();
   const summary = db.prepare(`
     SELECT k.id, k.name, k.color,
-           COALESCE(SUM(gc.value), 0) AS total,
-           COUNT(gc.id)               AS completions
+           COALESCE(SUM(gc.value), 0) + COALESCE(tx.total, 0) AS total,
+           COUNT(gc.id)                                         AS completions
     FROM   kids k
     LEFT   JOIN gig_completions gc ON gc.kid_id = k.id
+    LEFT   JOIN (
+      SELECT kid_id, SUM(amount) AS total
+      FROM   kid_transactions
+      GROUP  BY kid_id
+    ) tx ON tx.kid_id = k.id
     GROUP  BY k.id
     ORDER  BY k.id
   `).all();
@@ -314,18 +319,35 @@ router.get('/earnings', (req, res) => {
     LIMIT  60
   `).all();
 
-  res.json({ summary, history });
+  const transactions = db.prepare(`
+    SELECT * FROM kid_transactions ORDER BY date DESC, id DESC LIMIT 60
+  `).all();
+
+  res.json({ summary, history, transactions });
 });
 
-// Cash-out a kid (reset earnings — keeps history with a marker)
+// Cash-out a kid (reset earnings — clears gig completions and manual transactions)
 router.post('/kids/:kidId/cashout', (req, res) => {
   const db = getDb();
-  const { total } = db.prepare(
-    'SELECT COALESCE(SUM(value),0) AS total FROM gig_completions WHERE kid_id = ?'
+  const { gigTotal } = db.prepare(
+    'SELECT COALESCE(SUM(value),0) AS gigTotal FROM gig_completions WHERE kid_id = ?'
   ).get(req.params.kidId);
-  // Delete all completions for this kid (history resets)
-  db.prepare('DELETE FROM gig_completions WHERE kid_id = ?').run(req.params.kidId);
-  res.json({ ok: true, cashedOut: total });
+  const { txTotal } = db.prepare(
+    'SELECT COALESCE(SUM(amount),0) AS txTotal FROM kid_transactions WHERE kid_id = ?'
+  ).get(req.params.kidId);
+  db.prepare('DELETE FROM gig_completions  WHERE kid_id = ?').run(req.params.kidId);
+  db.prepare('DELETE FROM kid_transactions WHERE kid_id = ?').run(req.params.kidId);
+  res.json({ ok: true, cashedOut: gigTotal + txTotal });
+});
+
+// Add or deduct money from a kid's piggy bank manually
+router.post('/kids/:kidId/transaction', (req, res) => {
+  const { amount, note } = req.body || {};
+  if (!amount || isNaN(amount) || +amount === 0) return res.status(400).json({ error: 'Valid amount required' });
+  const db = getDb();
+  db.prepare('INSERT INTO kid_transactions (kid_id, amount, note, date) VALUES (?, ?, ?, ?)')
+    .run(req.params.kidId, parseFloat(amount), note?.trim() || null, today());
+  res.json({ ok: true });
 });
 
 // ── Kid management ────────────────────────────────────────────────────────────

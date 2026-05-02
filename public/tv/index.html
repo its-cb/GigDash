@@ -399,7 +399,7 @@
       const pct      = total ? Math.round((done / total) * 100) : 0;
       const unlocked = kid.allDailyDone;
 
-      const dailyItems = kid.dailyTasks.map(t => `
+      const dailyItems = [...kid.dailyTasks].sort((a, b) => b.completed - a.completed).map(t => `
         <div class="task-item ${t.completed ? 'done' : ''}">
           <div class="check-circle">${t.completed ? '✓' : ''}</div>
           <span class="task-label">${t.title}</span>
@@ -407,8 +407,10 @@
         </div>
       `).join('');
 
-      // Filter out tasks claimed by a sibling or handled by a parent
-      const myGigs = kid.gigTasks.filter(t => (!t.taken_by_kid_id && !t.parent_claimed) || t.completed_by_me);
+      // Filter out tasks claimed by a sibling or handled by a parent, completed float to top
+      const myGigs = kid.gigTasks
+        .filter(t => (!t.taken_by_kid_id && !t.parent_claimed) || t.completed_by_me)
+        .sort((a, b) => b.completed_by_me - a.completed_by_me);
 
       const gigItems = myGigs.length === 0
         ? '<div class="task-item"><span class="task-label" style="color:var(--muted)">No gig tasks available</span></div>'
