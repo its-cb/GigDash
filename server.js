@@ -167,6 +167,7 @@ app.post('/api/admin/wifi/connect', require('./middleware/auth'), (req, res) => 
 
 // ── Display sleep schedule ───────────────────────────────────────────────────
 let displaySchedule = { enabled: false, sleepTime: '22:00', wakeTime: '06:00' };
+let xrandrOutput = null; // detected at startup; used instead of DPMS to block Chromium wakeups
 
 function loadDisplaySchedule() {
   try {
@@ -180,12 +181,31 @@ function loadDisplaySchedule() {
   } catch {}
 }
 
+// Find the first connected xrandr output (e.g. "HDMI-1", "HDMI-A-1", "DP-1").
+// xrandr --output <name> --off/--auto is immune to Chromium's XResetScreenSaver()
+// calls, unlike xset dpms which Chromium continuously overrides.
+function detectXrandrOutput() {
+  if (isDocker) return;
+  try {
+    const out  = execSync('DISPLAY=:0 xrandr', { encoding: 'utf8', timeout: 5000 });
+    const line = out.split('\n').find(l => / connected/.test(l));
+    if (line) xrandrOutput = line.split(' ')[0];
+  } catch {}
+}
+
 function setDisplay(on) {
-  const cmd = on ? 'xset dpms force on && xset s reset' : 'xset dpms force off';
-  try { execSync(`DISPLAY=:0 ${cmd}`, { timeout: 3000 }); } catch {}
+  try {
+    if (xrandrOutput) {
+      execSync(`DISPLAY=:0 xrandr --output ${xrandrOutput} ${on ? '--auto' : '--off'}`, { timeout: 5000 });
+    } else {
+      const cmd = on ? 'xset dpms force on && xset s reset' : 'xset dpms force off';
+      execSync(`DISPLAY=:0 ${cmd}`, { timeout: 3000 });
+    }
+  } catch {}
 }
 
 function checkDisplaySchedule() {
+  if (!xrandrOutput && !isDocker) detectXrandrOutput(); // retry if X wasn't ready at startup
   if (!displaySchedule.enabled) return;
   const now   = new Date();
   const curr  = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
@@ -198,7 +218,7 @@ function checkDisplaySchedule() {
 }
 
 app.get('/api/admin/display-schedule', require('./middleware/auth'), (_req, res) => {
-  res.json({ ...displaySchedule });
+  res.json({ ...displaySchedule, unsupported: isDocker });
 });
 
 app.post('/api/admin/display-schedule', require('./middleware/auth'), (req, res) => {
@@ -219,6 +239,7 @@ app.post('/api/admin/display-schedule', require('./middleware/auth'), (req, res)
 
 initDatabase();
 loadDisplaySchedule();
+detectXrandrOutput();
 setInterval(checkDisplaySchedule, 60000); // check every minute
 
 app.listen(PORT, '0.0.0.0', () => {
