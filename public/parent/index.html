@@ -881,8 +881,9 @@ async function renderGigs(el) {
                 </button>`;
       }).join('');
 
+      const canEdit = !takenBy && !parentClaimed;
       return `
-        <div class="task-row">
+        <div class="task-row" id="gig-row-${task.id}">
           <div style="flex:1">
             <div class="task-row-label">
               ${task.title}
@@ -896,6 +897,16 @@ async function renderGigs(el) {
                   data-parent-claim="${task.id}" data-claimed="${parentClaimed ? '1' : '0'}"
                   title="${parentClaimed ? 'Parent handled — tap to release' : 'Mark as parent handled'}"
                   style="font-size:1rem">👨</button>
+          ${canEdit ? `<button class="delete-btn" data-edit-gig="${task.id}"
+                  data-title="${task.title.replace(/"/g,'&quot;')}" data-value="${task.value}"
+                  title="Edit task">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                       fill="none" stroke="currentColor" stroke-width="2.5"
+                       stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                  </svg>
+                </button>` : ''}
           <button class="delete-btn" data-del-gig="${task.id}" title="Archive task">×</button>
         </div>`;
     }).join('');
@@ -942,6 +953,7 @@ async function renderGigs(el) {
       attachToggles();
       attachDeletes();
       attachParentClaims();
+      attachEdits();
     });
   });
 
@@ -986,9 +998,39 @@ async function renderGigs(el) {
     });
   }
 
+  function attachEdits() {
+    el.querySelectorAll('[data-edit-gig]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id    = btn.dataset.editGig;
+        const title = btn.dataset.title;
+        const value = btn.dataset.value;
+        const row   = document.getElementById(`gig-row-${id}`);
+        row.innerHTML = `
+          <div style="flex:1;display:flex;gap:8px;align-items:center">
+            <input type="text"   id="eg-title-${id}" value="${title}" style="flex:1">
+            <input type="number" id="eg-value-${id}" value="${value}" min="0.01" step="0.25" style="max-width:80px">
+          </div>
+          <button class="btn-sm btn-green" id="eg-save-${id}">Save</button>
+          <button class="btn-sm btn-gray"  id="eg-cancel-${id}">Cancel</button>
+        `;
+        document.getElementById(`eg-cancel-${id}`).addEventListener('click', () => renderTab('gigs'));
+        document.getElementById(`eg-save-${id}`).addEventListener('click', async () => {
+          const t = document.getElementById(`eg-title-${id}`).value.trim();
+          const v = parseFloat(document.getElementById(`eg-value-${id}`).value);
+          if (!t || isNaN(v) || v <= 0) { toast('Enter a valid title and value'); return; }
+          const res = await api('PATCH', `/parent/gig-tasks/${id}`, { title: t, value: v });
+          if (res?.error) { toast(`⚠️ ${res.error}`); return; }
+          toast('Task updated');
+          renderTab('gigs');
+        });
+      });
+    });
+  }
+
   attachToggles();
   attachDeletes();
   attachParentClaims();
+  attachEdits();
 
   $('gig-add-btn').addEventListener('click', async () => {
     const title  = $('gig-title').value.trim();

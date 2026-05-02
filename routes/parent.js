@@ -152,6 +152,23 @@ router.post('/gig-tasks', (req, res) => {
   res.json({ id: lastInsertRowid });
 });
 
+// Edit title/value — only allowed if no completions exist in the current window
+router.patch('/gig-tasks/:id', (req, res) => {
+  const { title, value } = req.body || {};
+  const db   = getDb();
+  const task = db.prepare('SELECT * FROM gig_tasks WHERE id = ?').get(req.params.id);
+  if (!task) return res.status(404).json({ error: 'Task not found' });
+
+  const cutoff = gigCutoff(task.type);
+  const taken  = db.prepare('SELECT id FROM gig_completions    WHERE task_id = ? AND date >= ? LIMIT 1').get(req.params.id, cutoff);
+  const parent = db.prepare('SELECT id FROM gig_parent_claims  WHERE task_id = ? AND date >= ? LIMIT 1').get(req.params.id, cutoff);
+  if (taken || parent) return res.status(409).json({ error: 'Cannot edit a completed task' });
+
+  if (title?.trim())                          db.prepare('UPDATE gig_tasks SET title = ? WHERE id = ?').run(title.trim(), req.params.id);
+  if (value !== undefined && +value > 0)      db.prepare('UPDATE gig_tasks SET value = ? WHERE id = ?').run(parseFloat(value), req.params.id);
+  res.json({ ok: true });
+});
+
 // Soft-delete (archive) a gig task
 router.delete('/gig-tasks/:id', (req, res) => {
   getDb().prepare('UPDATE gig_tasks SET is_active = 0 WHERE id = ?').run(req.params.id);
