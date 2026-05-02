@@ -53,7 +53,9 @@ router.get('/', (req, res) => {
         CASE WHEN gc_me.id IS NOT NULL THEN 1 ELSE 0 END AS completed_by_me,
         (SELECT kid_id FROM gig_completions
          WHERE  task_id = gt.id AND kid_id != ? AND date >= c.cutoff
-         LIMIT  1) AS taken_by_kid_id
+         LIMIT  1) AS taken_by_kid_id,
+        (SELECT COUNT(*) FROM gig_parent_claims
+         WHERE  task_id = gt.id AND date >= c.cutoff) AS parent_claimed
       FROM gig_tasks gt
       JOIN cutoffs c ON c.id = gt.id
       LEFT JOIN gig_completions gc_me

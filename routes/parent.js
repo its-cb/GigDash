@@ -54,19 +54,22 @@ router.get('/daily-tasks', (req, res) => {
 });
 
 router.post('/daily-tasks', (req, res) => {
-  const { title, kid_id } = req.body || {};
+  const { title, kid_id, is_joint } = req.body || {};
   if (!title?.trim()) return res.status(400).json({ error: 'Title required' });
   const db  = getDb();
   const { lastInsertRowid } = db.prepare(
-    'INSERT INTO daily_tasks (title, kid_id) VALUES (?, ?)'
-  ).run(title.trim(), kid_id || null);
+    'INSERT INTO daily_tasks (title, kid_id, is_joint) VALUES (?, ?, ?)'
+  ).run(title.trim(), kid_id || null, is_joint ? 1 : 0);
   res.json({ id: lastInsertRowid });
 });
 
 router.patch('/daily-tasks/:id', (req, res) => {
-  const { is_trusted } = req.body || {};
-  getDb().prepare('UPDATE daily_tasks SET is_trusted = ? WHERE id = ?')
+  const { is_trusted, is_joint } = req.body || {};
+  const db = getDb();
+  if (is_trusted !== undefined) db.prepare('UPDATE daily_tasks SET is_trusted = ? WHERE id = ?')
     .run(is_trusted ? 1 : 0, req.params.id);
+  if (is_joint !== undefined)   db.prepare('UPDATE daily_tasks SET is_joint = ? WHERE id = ?')
+    .run(is_joint ? 1 : 0, req.params.id);
   res.json({ ok: true });
 });
 
@@ -77,19 +80,29 @@ router.delete('/daily-tasks/:id', (req, res) => {
   res.json({ ok: true });
 });
 
-// Mark or unmark a daily task complete for a specific kid today
+// Mark or unmark a daily task complete. Joint tasks mark/unmark all kids at once.
 router.post('/daily-tasks/:taskId/complete', (req, res) => {
   const { kid_id, completed, date } = req.body || {};
   const db   = getDb();
   const when = date || today();
-  if (completed) {
-    db.prepare(
-      'INSERT OR IGNORE INTO daily_completions (task_id, kid_id, date) VALUES (?, ?, ?)'
-    ).run(req.params.taskId, kid_id, when);
+  const task = db.prepare('SELECT is_joint FROM daily_tasks WHERE id = ?').get(req.params.taskId);
+  if (!task) return res.status(404).json({ error: 'Task not found' });
+
+  if (task.is_joint) {
+    if (completed) {
+      const insert = db.prepare('INSERT OR IGNORE INTO daily_completions (task_id, kid_id, date) VALUES (?, ?, ?)');
+      db.prepare('SELECT id FROM kids').all().forEach(k => insert.run(req.params.taskId, k.id, when));
+    } else {
+      db.prepare('DELETE FROM daily_completions WHERE task_id = ? AND date = ?').run(req.params.taskId, when);
+    }
   } else {
-    db.prepare(
-      'DELETE FROM daily_completions WHERE task_id = ? AND kid_id = ? AND date = ?'
-    ).run(req.params.taskId, kid_id, when);
+    if (completed) {
+      db.prepare('INSERT OR IGNORE INTO daily_completions (task_id, kid_id, date) VALUES (?, ?, ?)')
+        .run(req.params.taskId, kid_id, when);
+    } else {
+      db.prepare('DELETE FROM daily_completions WHERE task_id = ? AND kid_id = ? AND date = ?')
+        .run(req.params.taskId, kid_id, when);
+    }
   }
   res.json({ ok: true });
 });
@@ -112,7 +125,9 @@ router.get('/gig-tasks', (req, res) => {
            GROUP_CONCAT(gc.kid_id) AS completed_by,
            (SELECT kid_id FROM gig_completions
             WHERE  task_id = gt.id AND date >= c.cutoff
-            LIMIT  1) AS taken_by_kid_id
+            LIMIT  1) AS taken_by_kid_id,
+           (SELECT COUNT(*) FROM gig_parent_claims
+            WHERE  task_id = gt.id AND date >= c.cutoff) AS parent_claimed
     FROM   gig_tasks gt
     JOIN   cutoffs c ON c.id = gt.id
     LEFT   JOIN kids k ON k.id = gt.kid_id
@@ -143,6 +158,32 @@ router.delete('/gig-tasks/:id', (req, res) => {
   res.json({ ok: true });
 });
 
+// Toggle parent-handled claim for a gig task within its current window
+router.post('/gig-tasks/:taskId/parent-claim', (req, res) => {
+  const { claimed } = req.body || {};
+  const db   = getDb();
+  const task = db.prepare('SELECT * FROM gig_tasks WHERE id = ?').get(req.params.taskId);
+  if (!task) return res.status(404).json({ error: 'Task not found' });
+
+  const cutoff = gigCutoff(task.type);
+
+  if (claimed) {
+    const taken = db.prepare(
+      'SELECT kid_id FROM gig_completions WHERE task_id = ? AND date >= ? LIMIT 1'
+    ).get(req.params.taskId, cutoff);
+    if (taken) {
+      const taker = db.prepare('SELECT name FROM kids WHERE id = ?').get(taken.kid_id);
+      return res.status(409).json({ error: `Already claimed by ${taker?.name || 'a kid'}` });
+    }
+    db.prepare('INSERT INTO gig_parent_claims (task_id, date) VALUES (?, ?)')
+      .run(req.params.taskId, today());
+  } else {
+    db.prepare('DELETE FROM gig_parent_claims WHERE task_id = ? AND date >= ?')
+      .run(req.params.taskId, cutoff);
+  }
+  res.json({ ok: true });
+});
+
 // Mark or unmark a gig task complete for a specific kid (first-come-first-serve)
 router.post('/gig-tasks/:taskId/complete', (req, res) => {
   const { kid_id, completed } = req.body || {};
@@ -153,6 +194,12 @@ router.post('/gig-tasks/:taskId/complete', (req, res) => {
   const cutoff = gigCutoff(task.type);
 
   if (completed) {
+    // Block if parent handled it
+    const parentClaim = db.prepare(
+      'SELECT id FROM gig_parent_claims WHERE task_id = ? AND date >= ? LIMIT 1'
+    ).get(req.params.taskId, cutoff);
+    if (parentClaim) return res.status(409).json({ error: 'Parent handled this one' });
+
     // First-come-first-serve: block if another kid already claimed it
     const taken = db.prepare(
       'SELECT kid_id FROM gig_completions WHERE task_id = ? AND kid_id != ? AND date >= ? LIMIT 1'

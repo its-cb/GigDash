@@ -74,6 +74,13 @@ function initDatabase() {
       value TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS gig_parent_claims (
+      id      INTEGER PRIMARY KEY AUTOINCREMENT,
+      task_id INTEGER NOT NULL,
+      date    TEXT    NOT NULL,
+      FOREIGN KEY (task_id) REFERENCES gig_tasks(id)
+    );
+
     CREATE TABLE IF NOT EXISTS tracking_completions (
       id           INTEGER  PRIMARY KEY AUTOINCREMENT,
       task_id      INTEGER  NOT NULL,
@@ -96,6 +103,9 @@ function initDatabase() {
   const dailyCols = db.prepare('PRAGMA table_info(daily_tasks)').all().map(c => c.name);
   if (!dailyCols.includes('is_trusted')) {
     db.exec('ALTER TABLE daily_tasks ADD COLUMN is_trusted INTEGER NOT NULL DEFAULT 0');
+  }
+  if (!dailyCols.includes('is_joint')) {
+    db.exec('ALTER TABLE daily_tasks ADD COLUMN is_joint INTEGER NOT NULL DEFAULT 0');
   }
 
   const parentCols = db.prepare('PRAGMA table_info(parents)').all().map(c => c.name);

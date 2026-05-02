@@ -40,21 +40,31 @@ router.get('/', (req, res) => {
   res.json({ kids, dailyTasks, trackingTasks, date });
 });
 
-// Mark a trusted daily task complete for a kid
+// Mark a trusted daily task complete for a kid. Joint tasks mark/unmark all kids at once.
 router.post('/daily/:taskId/complete', (req, res) => {
   const { kid_id, completed } = req.body || {};
   const db   = getDb();
   const date = today();
 
-  const task = db.prepare('SELECT id FROM daily_tasks WHERE id = ? AND is_trusted = 1').get(req.params.taskId);
+  const task = db.prepare('SELECT id, is_joint FROM daily_tasks WHERE id = ? AND is_trusted = 1').get(req.params.taskId);
   if (!task) return res.status(403).json({ error: 'Task not available for self-completion' });
 
   if (completed) {
-    db.prepare('INSERT OR IGNORE INTO daily_completions (task_id, kid_id, date) VALUES (?, ?, ?)')
-      .run(req.params.taskId, kid_id, date);
+    if (task.is_joint) {
+      const insert = db.prepare('INSERT OR IGNORE INTO daily_completions (task_id, kid_id, date) VALUES (?, ?, ?)');
+      db.prepare('SELECT id FROM kids').all().forEach(k => insert.run(req.params.taskId, k.id, date));
+    } else {
+      db.prepare('INSERT OR IGNORE INTO daily_completions (task_id, kid_id, date) VALUES (?, ?, ?)')
+        .run(req.params.taskId, kid_id, date);
+    }
   } else {
-    db.prepare('DELETE FROM daily_completions WHERE task_id = ? AND kid_id = ? AND date = ?')
-      .run(req.params.taskId, kid_id, date);
+    if (task.is_joint) {
+      db.prepare('DELETE FROM daily_completions WHERE task_id = ? AND date = ?')
+        .run(req.params.taskId, date);
+    } else {
+      db.prepare('DELETE FROM daily_completions WHERE task_id = ? AND kid_id = ? AND date = ?')
+        .run(req.params.taskId, kid_id, date);
+    }
   }
   res.json({ ok: true });
 });

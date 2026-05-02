@@ -728,7 +728,11 @@ async function renderDaily(el) {
     ? '<div class="empty">No daily tasks yet — add one below.</div>'
     : tasks.map(task => {
         const cb  = completedBy(task);
-        const who = task.kid_id ? `<div class="task-row-meta">Only for ${kidName(task.kid_id)}</div>` : '';
+        const who = task.kid_id
+          ? `<div class="task-row-meta">Only for ${kidName(task.kid_id)}</div>`
+          : task.is_joint
+            ? `<div class="task-row-meta">🤝 Joint — one completion marks all done</div>`
+            : '';
         const toggles = kids.map(k => {
           const done = cb.includes(k.id);
           const cls  = done ? `done-${kidClass(k.id)}` : '';
@@ -739,6 +743,7 @@ async function renderDaily(el) {
                   </button>`;
         }).join('');
         const trusted = task.is_trusted;
+        const joint   = task.is_joint;
         return `
           <div class="task-row" id="daily-row-${task.id}">
             <div style="flex:1">
@@ -746,6 +751,10 @@ async function renderDaily(el) {
               ${who}
             </div>
             <div class="kid-toggles">${toggles}</div>
+            <button class="kid-toggle ${joint ? 'done-kid-1' : ''}"
+                    data-joint-daily="${task.id}" data-joint="${joint ? '1' : '0'}"
+                    title="${joint ? 'Joint task — tap to make individual' : 'Make joint (one completion marks all done)'}"
+                    style="font-size:1rem">🤝</button>
             <button class="kid-toggle ${trusted ? 'done-kid-1' : ''}"
                     data-trust-daily="${task.id}" data-trusted="${trusted ? '1' : '0'}"
                     title="${trusted ? 'Kids can self-complete (tap to revoke)' : 'Make self-service on tablet'}"
@@ -768,6 +777,10 @@ async function renderDaily(el) {
           <input type="text" id="daily-title" placeholder="New daily task…">
           <select id="daily-kid">${kidOptions}</select>
         </div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:0.88rem;color:var(--muted);cursor:pointer">
+          <input type="checkbox" id="daily-joint" style="width:16px;height:16px;cursor:pointer">
+          🤝 Joint task — one completion marks all kids done
+        </label>
         <button class="btn-primary" id="daily-add-btn">+ Add Task</button>
       </div>
     </div>
@@ -783,6 +796,17 @@ async function renderDaily(el) {
         { kid_id: +kidId, completed: !wasDone });
       if (!res || res.error) { toast('⚠️ Failed to save — try again'); return; }
       toast(!wasDone ? '✓ Marked complete' : 'Marked incomplete');
+      renderTab('daily');
+    });
+  });
+
+  // Joint toggle
+  el.querySelectorAll('[data-joint-daily]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const taskId   = btn.dataset.jointDaily;
+      const wasJoint = btn.dataset.joint === '1';
+      await api('PATCH', `/parent/daily-tasks/${taskId}`, { is_joint: !wasJoint });
+      toast(!wasJoint ? '🤝 Joint task — one completion marks all kids done' : 'Task is now individual');
       renderTab('daily');
     });
   });
@@ -810,10 +834,11 @@ async function renderDaily(el) {
 
   // Add daily task
   $('daily-add-btn').addEventListener('click', async () => {
-    const title  = $('daily-title').value.trim();
-    const kid_id = $('daily-kid').value || null;
+    const title    = $('daily-title').value.trim();
+    const kid_id   = $('daily-kid').value || null;
+    const is_joint = $('daily-joint').checked;
     if (!title) return;
-    await api('POST', '/parent/daily-tasks', { title, kid_id: kid_id ? +kid_id : null });
+    await api('POST', '/parent/daily-tasks', { title, kid_id: kid_id ? +kid_id : null, is_joint });
     toast('Daily task added');
     renderTab('daily');
   });
@@ -837,20 +862,22 @@ async function renderGigs(el) {
     if (filtered.length === 0) return '<div class="empty">No tasks of this type yet.</div>';
 
     return filtered.map(task => {
-      const cb      = completedBy(task);
-      const takenBy = task.taken_by_kid_id;
-      const who     = task.kid_id ? `<div class="task-row-meta">Only for ${kidName(task.kid_id)}</div>` : '';
+      const cb            = completedBy(task);
+      const takenBy       = task.taken_by_kid_id;
+      const parentClaimed = !!task.parent_claimed;
+      const who           = task.kid_id ? `<div class="task-row-meta">Only for ${kidName(task.kid_id)}</div>` : '';
 
       const toggles = kids.map(k => {
-        const done          = cb.includes(k.id);
-        const takenByOther  = takenBy && takenBy != k.id && !done;
-        const cls           = done ? `done-${kidClass(k.id)}` : '';
-        const takerName     = kids.find(x => x.id == takenBy)?.name;
-        const titleAttr     = takenByOther ? `Claimed by ${takerName}` : k.name;
-        return `<button class="kid-toggle ${cls}" ${takenByOther ? 'disabled' : ''}
+        const done         = cb.includes(k.id);
+        const takenByOther = takenBy && takenBy != k.id && !done;
+        const blocked      = parentClaimed || takenByOther;
+        const cls          = done ? `done-${kidClass(k.id)}` : '';
+        const takerName    = kids.find(x => x.id == takenBy)?.name;
+        const titleAttr    = parentClaimed ? 'Parent handled' : takenByOther ? `Claimed by ${takerName}` : k.name;
+        return `<button class="kid-toggle ${cls}" ${blocked ? 'disabled' : ''}
                   data-task="${task.id}" data-kid="${k.id}" data-done="${done ? '1' : '0'}"
                   title="${titleAttr}">
-                  ${takenByOther ? '🔒' : k.name.charAt(0)}
+                  ${blocked ? '🔒' : k.name.charAt(0)}
                 </button>`;
       }).join('');
 
@@ -865,6 +892,10 @@ async function renderGigs(el) {
           </div>
           <span class="task-row-value">${fmt(task.value)}</span>
           <div class="kid-toggles">${toggles}</div>
+          <button class="kid-toggle ${parentClaimed ? 'done-kid-1' : ''}"
+                  data-parent-claim="${task.id}" data-claimed="${parentClaimed ? '1' : '0'}"
+                  title="${parentClaimed ? 'Parent handled — tap to release' : 'Mark as parent handled'}"
+                  style="font-size:1rem">👨</button>
           <button class="delete-btn" data-del-gig="${task.id}" title="Archive task">×</button>
         </div>`;
     }).join('');
@@ -910,6 +941,7 @@ async function renderGigs(el) {
       $('gig-rows').innerHTML = buildRows();
       attachToggles();
       attachDeletes();
+      attachParentClaims();
     });
   });
 
@@ -941,8 +973,22 @@ async function renderGigs(el) {
     });
   }
 
+  function attachParentClaims() {
+    el.querySelectorAll('[data-parent-claim]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const taskId     = btn.dataset.parentClaim;
+        const wasClaimed = btn.dataset.claimed === '1';
+        const res = await api('POST', `/parent/gig-tasks/${taskId}/parent-claim`, { claimed: !wasClaimed });
+        if (res?.error) { toast(`⚠️ ${res.error}`); return; }
+        toast(!wasClaimed ? '👨 Marked as parent handled' : 'Released for kids');
+        renderTab('gigs');
+      });
+    });
+  }
+
   attachToggles();
   attachDeletes();
+  attachParentClaims();
 
   $('gig-add-btn').addEventListener('click', async () => {
     const title  = $('gig-title').value.trim();

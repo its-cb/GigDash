@@ -407,8 +407,8 @@
         </div>
       `).join('');
 
-      // Filter out tasks claimed by the other kid (first-come-first-serve)
-      const myGigs = kid.gigTasks.filter(t => !t.taken_by_kid_id || t.completed_by_me);
+      // Filter out tasks claimed by a sibling or handled by a parent
+      const myGigs = kid.gigTasks.filter(t => (!t.taken_by_kid_id && !t.parent_claimed) || t.completed_by_me);
 
       const gigItems = myGigs.length === 0
         ? '<div class="task-item"><span class="task-label" style="color:var(--muted)">No gig tasks available</span></div>'
