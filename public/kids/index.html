@@ -38,6 +38,7 @@
       height: 64px;
       background: var(--surface);
       border-bottom: 1px solid var(--border);
+      position: -webkit-sticky;
       position: sticky;
       top: 0;
       z-index: 10;
@@ -193,16 +194,18 @@
     /* ── PROMPT OVERLAY ──────────────────────────────────────── */
     #prompt-overlay {
       display: none;
+      pointer-events: none;
       position: fixed;
-      inset: 0;
+      top: 0; right: 0; bottom: 0; left: 0;
       background: rgba(0,0,0,0.7);
+      -webkit-backdrop-filter: blur(4px);
       backdrop-filter: blur(4px);
       z-index: 100;
       align-items: center;
       justify-content: center;
       padding: 24px;
     }
-    #prompt-overlay.open { display: flex; }
+    #prompt-overlay.open { display: flex; pointer-events: auto; }
 
     #prompt-card {
       background: var(--surface);
@@ -226,7 +229,6 @@
       font-size: 1rem;
       color: var(--muted);
       text-align: center;
-      margin-top: -12px;
     }
 
     #prompt-input {
@@ -539,7 +541,8 @@
     // Daily undo — requires typing REMOVE
     document.querySelectorAll('[data-undo-daily]').forEach(btn => {
       btn.addEventListener('click', () => {
-        const kidName   = kids.find(k => k.id === +btn.dataset.kid)?.name || 'this kid';
+        const found     = kids.find(k => k.id === +btn.dataset.kid);
+        const kidName   = found ? found.name : 'this kid';
         const taskTitle = btn.closest('.task-card').querySelector('.task-title').textContent;
         openRemovePrompt(
           { type: 'undo-daily', taskId: btn.dataset.undoDaily, kidId: +btn.dataset.kid },
