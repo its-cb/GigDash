@@ -28,10 +28,14 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Static assets
-app.use('/tv',     express.static(path.join(__dirname, 'public/tv')));
-app.use('/parent', express.static(path.join(__dirname, 'public/parent')));
-app.use('/kids',   express.static(path.join(__dirname, 'public/kids')));
+// Static assets — HTML served with no-cache so updates are picked up immediately
+const noCache = (_req, res, next) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  next();
+};
+app.use('/tv',     noCache, express.static(path.join(__dirname, 'public/tv')));
+app.use('/parent', noCache, express.static(path.join(__dirname, 'public/parent')));
+app.use('/kids',   noCache, express.static(path.join(__dirname, 'public/kids')));
 app.get('/', (_req, res) => res.redirect('/tv'));
 
 // API

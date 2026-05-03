@@ -589,8 +589,20 @@
     }
   }
 
+  // Reload signal — same endpoint the TV uses; server restart (e.g. after update) triggers a fresh page load
+  let lastKnownReload = 0, reloadReady = false;
+  async function checkReload() {
+    try {
+      const { ts } = await fetch('/api/admin/tv-reload').then(r => r.json());
+      if (!reloadReady) { lastKnownReload = ts; reloadReady = true; return; }
+      if (ts > lastKnownReload) { location.reload(); }
+    } catch {}
+  }
+
   fetchData();
-  setInterval(fetchData, 15000);
+  checkReload();
+  setInterval(fetchData,    15000);
+  setInterval(checkReload,  15000);
 </script>
 </body>
 </html>
