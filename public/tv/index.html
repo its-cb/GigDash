@@ -397,7 +397,7 @@
       const done     = kid.dailyTasks.filter(t => t.completed).length;
       const total    = kid.dailyTasks.length;
       const pct      = total ? Math.round((done / total) * 100) : 0;
-      const unlocked = kid.allDailyDone;
+      const unlocked = kid.gigsUnlocked;
 
       const dailyItems = [...kid.dailyTasks].sort((a, b) => b.completed - a.completed).map(t => `
         <div class="task-item ${t.completed ? 'done' : ''}">
@@ -422,6 +422,25 @@
           </div>
         `).join('');
 
+      const weeklyDone  = kid.weeklyTasks ? kid.weeklyTasks.filter(t => t.completed).length : 0;
+      const weeklyTotal = kid.weeklyTasks ? kid.weeklyTasks.length : 0;
+      const weeklySection = weeklyTotal === 0 ? '' : (() => {
+        const items = kid.weeklyTasks.map(t => `
+          <div class="task-item ${t.completed ? 'done' : ''}">
+            <div class="check-circle">${t.completed ? '✓' : ''}</div>
+            <span class="task-label">${t.title}</span>
+            <span style="margin-left:auto;font-size:0.65rem;font-weight:700;letter-spacing:0.08em;color:var(--muted);flex-shrink:0">WEEK</span>
+          </div>`).join('');
+        return `
+          <div class="section">
+            <div class="section-header">
+              <span class="section-title">Weekly Expectations</span>
+              <span style="font-size:0.8rem;color:var(--muted)">${weeklyDone}/${weeklyTotal}</span>
+            </div>
+            <div class="task-list">${items}</div>
+          </div>`;
+      })();
+
       const gigSection = unlocked ? `
         <div class="section gig-section">
           <div class="section-header">
@@ -438,8 +457,8 @@
           </div>
           <div class="locked-panel">
             <div class="lock-emoji">🔒</div>
-            <div class="lock-text">Finish daily tasks to unlock</div>
-            <div class="lock-sub">${done} of ${total} complete</div>
+            <div class="lock-text">${kid.allDailyDone ? 'Finish weekly tasks to unlock' : 'Finish daily tasks to unlock'}</div>
+            <div class="lock-sub">${kid.allDailyDone ? '' : `${done} of ${total} daily complete`}</div>
           </div>
         </div>
       `;
@@ -464,6 +483,8 @@
             </div>
             <div class="task-list">${dailyItems}</div>
           </div>
+
+          ${weeklySection}
 
           ${gigSection}
         </div>

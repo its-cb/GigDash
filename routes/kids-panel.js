@@ -24,6 +24,19 @@ router.get('/', (req, res) => {
     ORDER  BY dt.sort_order, dt.id
   `).all(date);
 
+  const weeklyTasks = db.prepare(`
+    SELECT wt.*,
+      GROUP_CONCAT(wc.kid_id) AS completed_by
+    FROM   weekly_tasks wt
+    LEFT   JOIN weekly_completions wc
+           ON  wc.task_id = wt.id
+           AND wc.date   >= date('now', 'localtime', '-7 days')
+    WHERE  wt.is_trusted = 1
+      AND  wt.is_active  = 1
+    GROUP  BY wt.id
+    ORDER  BY wt.sort_order, wt.id
+  `).all();
+
   const trackingTasks = db.prepare(`
     SELECT tt.*,
       CASE WHEN tc1.id IS NOT NULL THEN 1 ELSE 0 END AS step1_done,
@@ -37,7 +50,7 @@ router.get('/', (req, res) => {
     ORDER  BY tt.id
   `).all(date, date);
 
-  res.json({ kids, dailyTasks, trackingTasks, date });
+  res.json({ kids, dailyTasks, weeklyTasks, trackingTasks, date });
 });
 
 // Mark a trusted daily task complete for a kid. Joint tasks mark/unmark all kids at once.
@@ -64,6 +77,32 @@ router.post('/daily/:taskId/complete', (req, res) => {
     } else {
       db.prepare('DELETE FROM daily_completions WHERE task_id = ? AND kid_id = ? AND date = ?')
         .run(req.params.taskId, kid_id, date);
+    }
+  }
+  res.json({ ok: true });
+});
+
+// Mark a trusted weekly task complete (joint marks/unmarks all kids)
+router.post('/weekly/:taskId/complete', (req, res) => {
+  const { kid_id, completed } = req.body || {};
+  const db   = getDb();
+  const task = db.prepare('SELECT id, is_joint FROM weekly_tasks WHERE id = ? AND is_trusted = 1').get(req.params.taskId);
+  if (!task) return res.status(403).json({ error: 'Task not available for self-completion' });
+
+  if (completed) {
+    if (task.is_joint) {
+      const insert = db.prepare('INSERT OR REPLACE INTO weekly_completions (task_id, kid_id, date) VALUES (?, ?, ?)');
+      db.prepare('SELECT id FROM kids').all().forEach(k => insert.run(req.params.taskId, k.id, today()));
+    } else {
+      db.prepare('INSERT OR REPLACE INTO weekly_completions (task_id, kid_id, date) VALUES (?, ?, ?)')
+        .run(req.params.taskId, kid_id, today());
+    }
+  } else {
+    if (task.is_joint) {
+      db.prepare('DELETE FROM weekly_completions WHERE task_id = ?').run(req.params.taskId);
+    } else {
+      db.prepare('DELETE FROM weekly_completions WHERE task_id = ? AND kid_id = ?')
+        .run(req.params.taskId, kid_id);
     }
   }
   res.json({ ok: true });

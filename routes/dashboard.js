@@ -37,7 +37,9 @@ router.get('/', (req, res) => {
       ORDER  BY dt.sort_order, dt.id
     `).all(kid.id, date, kid.id);
 
-    const allDailyDone = dailyTasks.length > 0 && dailyTasks.every(t => t.completed);
+    const allDailyDone  = dailyTasks.length > 0 && dailyTasks.every(t => t.completed);
+    const allWeeklyDone = weeklyTasks.length === 0 || weeklyTasks.every(t => t.completed);
+    const gigsUnlocked  = allDailyDone && allWeeklyDone;
 
     const gigTasks = db.prepare(`
       WITH cutoffs AS (
@@ -67,12 +69,25 @@ router.get('/', (req, res) => {
       ORDER BY gt.value DESC, gt.id
     `).all(kid.id, kid.id, kid.id);
 
+    const weeklyTasks = db.prepare(`
+      SELECT wt.*,
+             CASE WHEN wc.id IS NOT NULL THEN 1 ELSE 0 END AS completed
+      FROM   weekly_tasks wt
+      LEFT   JOIN weekly_completions wc
+             ON  wc.task_id = wt.id
+             AND wc.kid_id  = ?
+             AND wc.date   >= date('now', 'localtime', '-7 days')
+      WHERE  wt.is_active = 1
+        AND (wt.kid_id IS NULL OR wt.kid_id = ?)
+      ORDER  BY wt.sort_order, wt.id
+    `).all(kid.id, kid.id);
+
     const { total } = db.prepare(`
       SELECT COALESCE((SELECT SUM(value)  FROM gig_completions  WHERE kid_id = ?), 0)
            + COALESCE((SELECT SUM(amount) FROM kid_transactions WHERE kid_id = ?), 0) AS total
     `).get(kid.id, kid.id);
 
-    return { ...kid, dailyTasks, gigTasks, allDailyDone, totalEarnings: total };
+    return { ...kid, dailyTasks, gigTasks, weeklyTasks, allDailyDone, gigsUnlocked, totalEarnings: total };
   });
 
   const trackingTasks = db.prepare(`

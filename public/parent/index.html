@@ -566,6 +566,7 @@
 
   <div id="tab-bar">
     <button class="tab-btn active" data-tab="daily">Daily Tasks</button>
+    <button class="tab-btn"        data-tab="weekly">Weekly</button>
     <button class="tab-btn"        data-tab="tracking">Tracking</button>
     <button class="tab-btn"        data-tab="gigs">Gig Tasks</button>
     <button class="tab-btn"        data-tab="earnings">Earnings</button>
@@ -708,6 +709,7 @@ function renderTab(tab) {
   const el = $('tab-content');
   el.innerHTML = '<div class="loading">Loading…</div>';
   if (tab === 'daily')    renderDaily(el);
+  if (tab === 'weekly')   renderWeekly(el);
   if (tab === 'tracking') renderTracking(el);
   if (tab === 'gigs')     renderGigs(el);
   if (tab === 'earnings') renderEarnings(el);
@@ -841,6 +843,130 @@ async function renderDaily(el) {
     await api('POST', '/parent/daily-tasks', { title, kid_id: kid_id ? +kid_id : null, is_joint });
     toast('Daily task added');
     renderTab('daily');
+  });
+}
+
+// ── WEEKLY TASKS ─────────────────────────────────────────────
+async function renderWeekly(el) {
+  const data = await api('GET', '/parent/weekly-tasks');
+  if (!data) return;
+  const { tasks } = data;
+
+  function completedBy(task) {
+    if (!task.completed_by) return [];
+    return task.completed_by.split(',').map(Number);
+  }
+
+  const weekLabel = 'Rolling 7-day window';
+
+  const rows = tasks.length === 0
+    ? '<div class="empty">No weekly expectations yet — add one below.</div>'
+    : tasks.map(task => {
+        const cb  = completedBy(task);
+        const who = task.kid_id
+          ? `<div class="task-row-meta">Only for ${kidName(task.kid_id)}</div>`
+          : '';
+        const toggles = kids.map(k => {
+          const done = cb.includes(k.id);
+          const cls  = done ? `done-${kidClass(k.id)}` : '';
+          return `<button class="kid-toggle ${cls}"
+                    data-wtask="${task.id}" data-kid="${k.id}" data-done="${done ? '1' : '0'}"
+                    title="${k.name}">
+                    ${k.name.charAt(0)}
+                  </button>`;
+        }).join('');
+        const joint   = task.is_joint;
+        const trusted = task.is_trusted;
+        return `
+          <div class="task-row">
+            <div style="flex:1">
+              <div class="task-row-label">${task.title}</div>
+              ${who}
+              ${joint ? '<div class="task-row-meta">🤝 Joint — one completion marks all done</div>' : ''}
+            </div>
+            <div class="kid-toggles">${toggles}</div>
+            <button class="kid-toggle ${joint ? 'done-kid-1' : ''}"
+                    data-joint-weekly="${task.id}" data-joint="${joint ? '1' : '0'}"
+                    title="${joint ? 'Joint task — tap to make individual' : 'Make joint (one completion marks all done)'}"
+                    style="font-size:1rem">🤝</button>
+            <button class="kid-toggle ${trusted ? 'done-kid-1' : ''}"
+                    data-trust-weekly="${task.id}" data-trusted="${trusted ? '1' : '0'}"
+                    title="${trusted ? 'Kids can self-complete (tap to revoke)' : 'Make self-service on tablet'}"
+                    style="font-size:1rem">✋</button>
+            <button class="delete-btn" data-del-weekly="${task.id}" title="Remove expectation">×</button>
+          </div>`;
+      }).join('');
+
+  const kidOptions = `
+    <option value="">Both kids</option>
+    ${kids.map(k => `<option value="${k.id}">${k.name} only</option>`).join('')}
+  `;
+
+  el.innerHTML = `
+    <div class="card">
+      <div class="card-section-title">${weekLabel} — tap a name to toggle ✓</div>
+      ${rows}
+      <div class="add-form">
+        <div class="add-form-row">
+          <input type="text" id="weekly-title" placeholder="New weekly expectation…">
+          <select id="weekly-kid">${kidOptions}</select>
+        </div>
+        <button class="btn-primary" id="weekly-add-btn">+ Add Expectation</button>
+      </div>
+    </div>
+  `;
+
+  el.querySelectorAll('[data-wtask]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const taskId  = btn.dataset.wtask;
+      const kidId   = btn.dataset.kid;
+      const wasDone = btn.dataset.done === '1';
+      const res = await api('POST', `/parent/weekly-tasks/${taskId}/complete`,
+        { kid_id: +kidId, completed: !wasDone });
+      if (!res || res.error) { toast('⚠️ Failed to save — try again'); return; }
+      toast(!wasDone ? '✓ Marked complete' : 'Marked incomplete');
+      renderTab('weekly');
+    });
+  });
+
+  // Joint toggle
+  el.querySelectorAll('[data-joint-weekly]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const taskId   = btn.dataset.jointWeekly;
+      const wasJoint = btn.dataset.joint === '1';
+      await api('PATCH', `/parent/weekly-tasks/${taskId}`, { is_joint: !wasJoint });
+      toast(!wasJoint ? '🤝 Joint task — one completion marks all kids done' : 'Task is now individual');
+      renderTab('weekly');
+    });
+  });
+
+  // Trusted toggle
+  el.querySelectorAll('[data-trust-weekly]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const taskId     = btn.dataset.trustWeekly;
+      const wasTrusted = btn.dataset.trusted === '1';
+      await api('PATCH', `/parent/weekly-tasks/${taskId}`, { is_trusted: !wasTrusted });
+      toast(!wasTrusted ? '✋ Task is now self-service on tablet' : 'Task removed from tablet');
+      renderTab('weekly');
+    });
+  });
+
+  el.querySelectorAll('[data-del-weekly]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Remove this weekly expectation?')) return;
+      await api('DELETE', `/parent/weekly-tasks/${btn.dataset.delWeekly}`);
+      toast('Expectation removed');
+      renderTab('weekly');
+    });
+  });
+
+  $('weekly-add-btn').addEventListener('click', async () => {
+    const title  = $('weekly-title').value.trim();
+    const kid_id = $('weekly-kid').value || null;
+    if (!title) return;
+    await api('POST', '/parent/weekly-tasks', { title, kid_id: kid_id ? +kid_id : null });
+    toast('Weekly expectation added');
+    renderTab('weekly');
   });
 }
 

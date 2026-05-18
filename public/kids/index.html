@@ -411,13 +411,15 @@
     const { type, taskId, kidId, step } = pendingAction;
 
     // Remove confirmation flow
-    if (type === 'undo-daily' || type === 'undo-tracking') {
+    if (type === 'undo-daily' || type === 'undo-weekly' || type === 'undo-tracking') {
       if (input.trim().toLowerCase() !== 'remove') {
         document.getElementById('prompt-error').textContent = 'Type REMOVE (all caps or lowercase) to confirm';
         return;
       }
       if (type === 'undo-daily') {
         await api('POST', `/daily/${taskId}/complete`, { kid_id: kidId, completed: false });
+      } else if (type === 'undo-weekly') {
+        await api('POST', `/weekly/${taskId}/complete`, { kid_id: kidId, completed: false });
       } else {
         await api('POST', `/tracking/${taskId}/step/${step}/complete`, { completed: false });
       }
@@ -437,6 +439,8 @@
     document.getElementById('prompt-error').textContent = '';
     if (type === 'daily') {
       await api('POST', `/daily/${taskId}/complete`, { kid_id: kid.id, completed: true });
+    } else if (type === 'weekly') {
+      await api('POST', `/weekly/${taskId}/complete`, { kid_id: kid.id, completed: true });
     } else if (type === 'tracking') {
       await api('POST', `/tracking/${taskId}/step/${step}/complete`, { kid_id: kid.id, completed: true });
     }
@@ -462,7 +466,7 @@
 
   function render(data) {
     kids = data.kids;
-    const { dailyTasks, trackingTasks } = data;
+    const { dailyTasks, weeklyTasks, trackingTasks } = data;
     const el = document.getElementById('content');
     let html = '';
 
@@ -487,6 +491,33 @@
             <div class="task-top">
               <div class="task-title">${task.title}</div>
               <button class="done-btn" data-daily-done="${task.id}">Mark Done ✓</button>
+            </div>
+            ${chips ? `<div class="completions">${chips}</div>` : ''}
+          </div>`;
+      }).join('');
+    }
+
+    // ── Weekly Tasks ──────────────────────────────────────
+    if (weeklyTasks && weeklyTasks.length > 0) {
+      html += `<div class="section-title">📅 Weekly Tasks</div>`;
+      html += weeklyTasks.map(task => {
+        const cb    = completedBy(task);
+        const chips = cb.map(kidId => {
+          const k = kids.find(k => k.id === kidId);
+          return k ? `
+            <div class="completion-chip">
+              ✓ ${k.name}
+              <button class="undo-btn"
+                      data-undo-weekly="${task.id}" data-kid="${k.id}"
+                      title="Undo ${k.name}">×</button>
+            </div>` : '';
+        }).join('');
+
+        return `
+          <div class="task-card">
+            <div class="task-top">
+              <div class="task-title">${task.title}</div>
+              <button class="done-btn" data-weekly-done="${task.id}">Mark Done ✓</button>
             </div>
             ${chips ? `<div class="completions">${chips}</div>` : ''}
           </div>`;
@@ -524,8 +555,8 @@
       }).join('');
     }
 
-    if (!dailyTasks.length && !trackingTasks.length) {
-      html = '<div class="empty">No self-service tasks yet.<br>Ask a parent to mark some daily tasks as trusted.</div>';
+    if (!dailyTasks.length && !(weeklyTasks && weeklyTasks.length) && !trackingTasks.length) {
+      html = '<div class="empty">No self-service tasks yet.<br>Ask a parent to mark some daily or weekly tasks as trusted.</div>';
     }
 
     el.innerHTML = html;
@@ -551,6 +582,29 @@
         const taskTitle = btn.closest('.task-card').querySelector('.task-title').textContent;
         openRemovePrompt(
           { type: 'undo-daily', taskId: btn.dataset.undoDaily, kidId: +btn.dataset.kid },
+          kidName, taskTitle
+        );
+      });
+    });
+
+    // Weekly "Mark Done" button
+    document.querySelectorAll('[data-weekly-done]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        openPrompt(
+          { type: 'weekly', taskId: btn.dataset.weeklyDone },
+          btn.closest('.task-card').querySelector('.task-title').textContent
+        );
+      });
+    });
+
+    // Weekly undo
+    document.querySelectorAll('[data-undo-weekly]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const found     = kids.find(k => k.id === +btn.dataset.kid);
+        const kidName   = found ? found.name : 'this kid';
+        const taskTitle = btn.closest('.task-card').querySelector('.task-title').textContent;
+        openRemovePrompt(
+          { type: 'undo-weekly', taskId: btn.dataset.undoWeekly, kidId: +btn.dataset.kid },
           kidName, taskTitle
         );
       });

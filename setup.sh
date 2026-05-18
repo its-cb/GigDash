@@ -28,9 +28,14 @@ systemctl start chrony
 chronyc makestep 2>/dev/null || true
 sleep 3
 
-# ── 1. System update ─────────────────────────────────────────
-echo "[1/8] Updating system packages..."
-apt-get update -qq && apt-get upgrade -y -qq
+# ── 1. System update (first install only) ────────────────────
+if [ ! -d "$GD_DIR" ]; then
+  echo "[1/8] Updating system packages (first install)..."
+  apt-get update -qq && apt-get upgrade -y -qq
+else
+  echo "[1/8] Skipping system upgrade (re-deploy — run apt upgrade manually to update OS)"
+  apt-get update -qq
+fi
 
 # ── 2. Install dependencies ──────────────────────────────────
 echo "[2/8] Installing dependencies..."

@@ -237,6 +237,75 @@ router.post('/gig-tasks/:taskId/complete', (req, res) => {
   res.json({ ok: true });
 });
 
+// ── Weekly tasks ─────────────────────────────────────────────────────────────
+router.get('/weekly-tasks', (req, res) => {
+  const db    = getDb();
+  const tasks = db.prepare(`
+    SELECT wt.*,
+           k.name AS kid_name,
+           GROUP_CONCAT(wc.kid_id) AS completed_by
+    FROM   weekly_tasks wt
+    LEFT   JOIN kids k ON k.id = wt.kid_id
+    LEFT   JOIN weekly_completions wc
+           ON  wc.task_id = wt.id
+           AND wc.date   >= date('now', 'localtime', '-7 days')
+    WHERE  wt.is_active = 1
+    GROUP  BY wt.id
+    ORDER  BY wt.sort_order, wt.id
+  `).all();
+  res.json({ tasks });
+});
+
+router.post('/weekly-tasks', (req, res) => {
+  const { title, kid_id, is_joint } = req.body || {};
+  if (!title?.trim()) return res.status(400).json({ error: 'Title required' });
+  const db = getDb();
+  const { lastInsertRowid } = db.prepare(
+    'INSERT INTO weekly_tasks (title, kid_id, is_joint) VALUES (?, ?, ?)'
+  ).run(title.trim(), kid_id || null, is_joint ? 1 : 0);
+  res.json({ id: lastInsertRowid });
+});
+
+router.patch('/weekly-tasks/:id', (req, res) => {
+  const { is_trusted, is_joint } = req.body || {};
+  const db = getDb();
+  if (is_trusted !== undefined) db.prepare('UPDATE weekly_tasks SET is_trusted = ? WHERE id = ?')
+    .run(is_trusted ? 1 : 0, req.params.id);
+  if (is_joint !== undefined)   db.prepare('UPDATE weekly_tasks SET is_joint = ? WHERE id = ?')
+    .run(is_joint ? 1 : 0, req.params.id);
+  res.json({ ok: true });
+});
+
+router.delete('/weekly-tasks/:id', (req, res) => {
+  getDb().prepare('UPDATE weekly_tasks SET is_active = 0 WHERE id = ?').run(req.params.id);
+  res.json({ ok: true });
+});
+
+router.post('/weekly-tasks/:taskId/complete', (req, res) => {
+  const { kid_id, completed } = req.body || {};
+  const db   = getDb();
+  const task = db.prepare('SELECT is_joint FROM weekly_tasks WHERE id = ?').get(req.params.taskId);
+  if (!task) return res.status(404).json({ error: 'Task not found' });
+
+  if (task.is_joint) {
+    if (completed) {
+      const insert = db.prepare('INSERT OR REPLACE INTO weekly_completions (task_id, kid_id, date) VALUES (?, ?, ?)');
+      db.prepare('SELECT id FROM kids').all().forEach(k => insert.run(req.params.taskId, k.id, today()));
+    } else {
+      db.prepare('DELETE FROM weekly_completions WHERE task_id = ?').run(req.params.taskId);
+    }
+  } else {
+    if (completed) {
+      db.prepare('INSERT OR REPLACE INTO weekly_completions (task_id, kid_id, date) VALUES (?, ?, ?)')
+        .run(req.params.taskId, kid_id, today());
+    } else {
+      db.prepare('DELETE FROM weekly_completions WHERE task_id = ? AND kid_id = ?')
+        .run(req.params.taskId, kid_id);
+    }
+  }
+  res.json({ ok: true });
+});
+
 // ── Tracking tasks ───────────────────────────────────────────────────────────
 router.get('/tracking-tasks', (req, res) => {
   const db   = getDb();

@@ -101,6 +101,28 @@ function initDatabase() {
       FOREIGN KEY (task_id) REFERENCES tracking_tasks(id),
       FOREIGN KEY (kid_id)  REFERENCES kids(id)
     );
+
+    CREATE TABLE IF NOT EXISTS weekly_tasks (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      title      TEXT    NOT NULL,
+      kid_id     INTEGER,              -- NULL = applies to all kids
+      is_active  INTEGER NOT NULL DEFAULT 1,
+      is_trusted INTEGER NOT NULL DEFAULT 0,
+      is_joint   INTEGER NOT NULL DEFAULT 0,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      FOREIGN KEY (kid_id) REFERENCES kids(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS weekly_completions (
+      id           INTEGER  PRIMARY KEY AUTOINCREMENT,
+      task_id      INTEGER  NOT NULL,
+      kid_id       INTEGER  NOT NULL,
+      date         TEXT     NOT NULL,  -- YYYY-MM-DD (actual completion date)
+      completed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(task_id, kid_id),         -- one active completion per task/kid
+      FOREIGN KEY (task_id) REFERENCES weekly_tasks(id),
+      FOREIGN KEY (kid_id)  REFERENCES kids(id)
+    );
   `);
 
   // Migrations
@@ -115,6 +137,32 @@ function initDatabase() {
   }
   if (!dailyCols.includes('is_joint')) {
     db.exec('ALTER TABLE daily_tasks ADD COLUMN is_joint INTEGER NOT NULL DEFAULT 0');
+  }
+
+  // Migrate weekly_completions from calendar-week keying to rolling 7-day date keying
+  const wkCompCols = db.prepare('PRAGMA table_info(weekly_completions)').all().map(c => c.name);
+  if (wkCompCols.length > 0 && wkCompCols.includes('week') && !wkCompCols.includes('date')) {
+    db.exec(`
+      DROP TABLE weekly_completions;
+      CREATE TABLE weekly_completions (
+        id           INTEGER  PRIMARY KEY AUTOINCREMENT,
+        task_id      INTEGER  NOT NULL,
+        kid_id       INTEGER  NOT NULL,
+        date         TEXT     NOT NULL,
+        completed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(task_id, kid_id),
+        FOREIGN KEY (task_id) REFERENCES weekly_tasks(id),
+        FOREIGN KEY (kid_id)  REFERENCES kids(id)
+      );
+    `);
+  }
+
+  const weeklyCols = db.prepare('PRAGMA table_info(weekly_tasks)').all().map(c => c.name);
+  if (!weeklyCols.includes('is_trusted')) {
+    db.exec('ALTER TABLE weekly_tasks ADD COLUMN is_trusted INTEGER NOT NULL DEFAULT 0');
+  }
+  if (!weeklyCols.includes('is_joint')) {
+    db.exec('ALTER TABLE weekly_tasks ADD COLUMN is_joint INTEGER NOT NULL DEFAULT 0');
   }
 
   const parentCols = db.prepare('PRAGMA table_info(parents)').all().map(c => c.name);
