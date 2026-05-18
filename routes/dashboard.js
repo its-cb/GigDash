@@ -37,6 +37,24 @@ router.get('/', (req, res) => {
       ORDER  BY dt.sort_order, dt.id
     `).all(kid.id, date, kid.id);
 
+    let weeklyTasks = [];
+    try {
+      weeklyTasks = db.prepare(`
+        SELECT wt.*,
+               CASE WHEN wc.id IS NOT NULL THEN 1 ELSE 0 END AS completed
+        FROM   weekly_tasks wt
+        LEFT   JOIN weekly_completions wc
+               ON  wc.task_id = wt.id
+               AND wc.kid_id  = ?
+               AND wc.date   >= date('now', 'localtime', '-7 days')
+        WHERE  wt.is_active = 1
+          AND (wt.kid_id IS NULL OR wt.kid_id = ?)
+        ORDER  BY wt.sort_order, wt.id
+      `).all(kid.id, kid.id);
+    } catch (e) {
+      console.error('[dashboard] weekly query failed:', e.message);
+    }
+
     const allDailyDone  = dailyTasks.length > 0 && dailyTasks.every(t => t.completed);
     const allWeeklyDone = weeklyTasks.length === 0 || weeklyTasks.every(t => t.completed);
     const gigsUnlocked  = allDailyDone && allWeeklyDone;
@@ -68,19 +86,6 @@ router.get('/', (req, res) => {
         AND (gt.kid_id IS NULL OR gt.kid_id = ?)
       ORDER BY gt.value DESC, gt.id
     `).all(kid.id, kid.id, kid.id);
-
-    const weeklyTasks = db.prepare(`
-      SELECT wt.*,
-             CASE WHEN wc.id IS NOT NULL THEN 1 ELSE 0 END AS completed
-      FROM   weekly_tasks wt
-      LEFT   JOIN weekly_completions wc
-             ON  wc.task_id = wt.id
-             AND wc.kid_id  = ?
-             AND wc.date   >= date('now', 'localtime', '-7 days')
-      WHERE  wt.is_active = 1
-        AND (wt.kid_id IS NULL OR wt.kid_id = ?)
-      ORDER  BY wt.sort_order, wt.id
-    `).all(kid.id, kid.id);
 
     const { total } = db.prepare(`
       SELECT COALESCE((SELECT SUM(value)  FROM gig_completions  WHERE kid_id = ?), 0)

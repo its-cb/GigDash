@@ -140,21 +140,25 @@ function initDatabase() {
   }
 
   // Migrate weekly_completions from calendar-week keying to rolling 7-day date keying
-  const wkCompCols = db.prepare('PRAGMA table_info(weekly_completions)').all().map(c => c.name);
-  if (wkCompCols.length > 0 && wkCompCols.includes('week') && !wkCompCols.includes('date')) {
-    db.exec(`
-      DROP TABLE weekly_completions;
-      CREATE TABLE weekly_completions (
-        id           INTEGER  PRIMARY KEY AUTOINCREMENT,
-        task_id      INTEGER  NOT NULL,
-        kid_id       INTEGER  NOT NULL,
-        date         TEXT     NOT NULL,
-        completed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE(task_id, kid_id),
-        FOREIGN KEY (task_id) REFERENCES weekly_tasks(id),
-        FOREIGN KEY (kid_id)  REFERENCES kids(id)
-      );
-    `);
+  try {
+    const wkCompCols = db.prepare('PRAGMA table_info(weekly_completions)').all().map(c => c.name);
+    if (wkCompCols.length > 0 && wkCompCols.includes('week') && !wkCompCols.includes('date')) {
+      db.exec('DROP TABLE weekly_completions');
+      db.exec(`
+        CREATE TABLE weekly_completions (
+          id           INTEGER  PRIMARY KEY AUTOINCREMENT,
+          task_id      INTEGER  NOT NULL,
+          kid_id       INTEGER  NOT NULL,
+          date         TEXT     NOT NULL,
+          completed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(task_id, kid_id),
+          FOREIGN KEY (task_id) REFERENCES weekly_tasks(id),
+          FOREIGN KEY (kid_id)  REFERENCES kids(id)
+        )
+      `);
+    }
+  } catch (e) {
+    console.error('[migration] weekly_completions:', e.message);
   }
 
   const weeklyCols = db.prepare('PRAGMA table_info(weekly_tasks)').all().map(c => c.name);
