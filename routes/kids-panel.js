@@ -10,6 +10,7 @@ const today = () => {
 
 // Public — no auth. Tablet is a trusted device on the home network.
 router.get('/', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
   const db   = getDb();
   const date = today();
   const kids = db.prepare('SELECT * FROM kids ORDER BY id').all();
