@@ -111,8 +111,11 @@ while true; do xset s reset; sleep 240; done &
 # Start the GigDashboard server
 /usr/bin/node $GD_DIR/server.js &
 
-# Wait for the server to be ready
-sleep 3
+# Wait for the server to be ready (poll up to 60s instead of fixed sleep)
+WAIT=0
+until curl -sf http://localhost:3000/api/push >/dev/null 2>&1; do
+  sleep 1; WAIT=$((WAIT+1)); [ $WAIT -ge 60 ] && break
+done
 
 # Reset Chromium exit state so the restore prompt never appears
 sed -i 's/"exit_type":"Crashed"/"exit_type":"Normal"/g; s/"exit_type":"Killed"/"exit_type":"Normal"/g; s/"exited_cleanly":false/"exited_cleanly":true/g' \

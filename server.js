@@ -58,8 +58,51 @@ let lastReload = Date.now();
 app.get( '/api/admin/tv-reload', (_req, res) => res.json({ ts: lastReload }));
 app.post('/api/admin/tv-reload', require('./middleware/auth'), (_req, res) => {
   lastReload = Date.now();
+  forceTVReload();
   res.json({ ts: lastReload });
 });
+
+// Force-navigate Chromium via CDP remote debug port.
+// Works even when the TV page's own JS isn't running (e.g. white screen after hard reboot).
+function forceTVReload() {
+  if (isDocker) return;
+  require('http').get('http://localhost:9222/json', res => {
+    let raw = '';
+    res.on('data', d => raw += d);
+    res.on('end', () => {
+      try {
+        const tabs = JSON.parse(raw);
+        const tab  = tabs.find(t => t.webSocketDebuggerUrl);
+        if (!tab) return;
+        const wsUrl = require('url').parse(tab.webSocketDebuggerUrl);
+        const sock  = require('net').createConnection(+wsUrl.port || 9222, '127.0.0.1');
+        const key   = require('crypto').randomBytes(16).toString('base64');
+        sock.write(
+          `GET ${wsUrl.path} HTTP/1.1\r\nHost: localhost:9222\r\n` +
+          `Upgrade: websocket\r\nConnection: Upgrade\r\n` +
+          `Origin: http://localhost:9222\r\n` +
+          `Sec-WebSocket-Key: ${key}\r\nSec-WebSocket-Version: 13\r\n\r\n`
+        );
+        sock.once('data', () => {
+          const msg  = Buffer.from(JSON.stringify({
+            id: 1, method: 'Page.navigate',
+            params: { url: `http://localhost:${PORT}/tv` }
+          }));
+          const mask  = require('crypto').randomBytes(4);
+          const frame = Buffer.alloc(6 + msg.length);
+          frame[0] = 0x81;
+          frame[1] = 0x80 | msg.length;
+          mask.copy(frame, 2);
+          for (let i = 0; i < msg.length; i++) frame[6 + i] = msg[i] ^ mask[i % 4];
+          sock.write(frame);
+          setTimeout(() => sock.destroy(), 500);
+        });
+        sock.on('error', () => {});
+        setTimeout(() => sock.destroy(), 3000);
+      } catch {}
+    });
+  }).on('error', () => {});
+}
 
 // System controls — not supported in Docker
 const isDocker = require('fs').existsSync('/.dockerenv');
