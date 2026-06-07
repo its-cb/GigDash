@@ -40,13 +40,9 @@ app.get('/', (_req, res) => res.redirect('/tv'));
 
 // API
 app.use('/api/auth',       require('./routes/auth'));
-app.use('/api/dashboard',  (_req, _res, next) => { lastDashboardFetch = Date.now(); next(); }, require('./routes/dashboard'));
+app.use('/api/dashboard',  require('./routes/dashboard'));
 app.use('/api/parent',     require('./middleware/auth'), require('./routes/parent'));
 app.use('/api/kids-panel', require('./routes/kids-panel'));
-
-// Tracks the TV kiosk's heartbeat — it polls /api/dashboard every 30s when alive.
-// Used by scheduleBootRecovery() to detect a stuck/blank kiosk after a cold boot.
-let lastDashboardFetch = 0;
 
 // Push signal — triggers immediate TV data refresh
 let lastPush = Date.now();
@@ -106,27 +102,6 @@ function forceTVReload() {
       } catch {}
     });
   }).on('error', () => {});
-}
-
-// On a cold boot, Chromium can launch before the server finishes starting up,
-// land on a connection-refused error page, and sit there blank forever — that
-// page has no app JS, so nothing ever retries. "Reload TV" (forceTVReload)
-// is the proven manual fix; this watches for the TV's heartbeat
-// (it polls /api/dashboard every 30s once the real page is loaded and running)
-// and auto-triggers that same fix until the kiosk is confirmed alive.
-function scheduleBootRecovery() {
-  if (isDocker) return;
-  const startedAt    = Date.now();
-  const MAX_DURATION = 20 * 60 * 1000; // give up after 20 minutes
-  const CHECK_EVERY  = 20 * 1000;
-  const STALE_AFTER  = 40 * 1000;      // TV polls every 30s — 40s of silence means it's not running
-
-  const timer = setInterval(() => {
-    if (Date.now() - lastDashboardFetch < STALE_AFTER) { clearInterval(timer); return; }
-    if (Date.now() - startedAt > MAX_DURATION)         { clearInterval(timer); return; }
-    lastReload = Date.now();
-    forceTVReload();
-  }, CHECK_EVERY);
 }
 
 // System controls — not supported in Docker
@@ -320,5 +295,4 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`    TV Dashboard   → http://localhost:${PORT}/tv`);
   console.log(`    Parent Panel   → http://localhost:${PORT}/parent`);
   console.log(`    API            → http://localhost:${PORT}/api\n`);
-  scheduleBootRecovery();
 });
