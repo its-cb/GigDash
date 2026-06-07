@@ -108,10 +108,8 @@ xset s noblank
 # Keep display alive — reset screen saver every 4 minutes
 while true; do xset s reset; sleep 240; done &
 
-# Start the GigDashboard server
-/usr/bin/node $GD_DIR/server.js &
-
-# Wait for the server to be ready (poll up to 60s instead of fixed sleep)
+# Server is started by systemd (gigdash.service) — just wait for it to be ready
+# (poll up to 60s instead of a fixed sleep)
 WAIT=0
 until curl -sf http://localhost:3000/api/push >/dev/null 2>&1; do
   sleep 1; WAIT=$((WAIT+1)); [ $WAIT -ge 60 ] && break
