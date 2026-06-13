@@ -20,7 +20,7 @@ function gigCutoff(type) {
   const now = new Date();
   if (type === 'weekly') {
     const d = new Date(now);
-    d.setDate(d.getDate() - 7); // rolling 7 days
+    d.setDate(d.getDate() - 5); // rolling 5 days
     return d.toISOString().split('T')[0];
   }
   if (type === 'biweekly') {
@@ -114,7 +114,7 @@ router.get('/gig-tasks', (req, res) => {
     WITH cutoffs AS (
       SELECT id,
         CASE type
-          WHEN 'weekly'   THEN date('now', 'localtime', '-7 days')
+          WHEN 'weekly'   THEN date('now', 'localtime', '-5 days')
           WHEN 'biweekly' THEN date('now', 'localtime', '-14 days')
           ELSE '0000-01-01'
         END AS cutoff
@@ -248,7 +248,7 @@ router.get('/weekly-tasks', (req, res) => {
     LEFT   JOIN kids k ON k.id = wt.kid_id
     LEFT   JOIN weekly_completions wc
            ON  wc.task_id = wt.id
-           AND wc.date   >= date('now', 'localtime', '-7 days')
+           AND wc.date   >= date('now', 'localtime', '-5 days')
     WHERE  wt.is_active = 1
     GROUP  BY wt.id
     ORDER  BY wt.sort_order, wt.id

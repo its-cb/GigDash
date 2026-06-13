@@ -46,7 +46,7 @@ router.get('/', (req, res) => {
         LEFT   JOIN weekly_completions wc
                ON  wc.task_id = wt.id
                AND wc.kid_id  = ?
-               AND wc.date   >= date('now', 'localtime', '-7 days')
+               AND wc.date   >= date('now', 'localtime', '-5 days')
         WHERE  wt.is_active = 1
           AND (wt.kid_id IS NULL OR wt.kid_id = ?)
         ORDER  BY wt.sort_order, wt.id
@@ -63,7 +63,7 @@ router.get('/', (req, res) => {
       WITH cutoffs AS (
         SELECT id,
           CASE type
-            WHEN 'weekly'   THEN date('now', 'localtime', '-7 days')
+            WHEN 'weekly'   THEN date('now', 'localtime', '-5 days')
             WHEN 'biweekly' THEN date('now', 'localtime', '-14 days')
             ELSE '0000-01-01'
           END AS cutoff

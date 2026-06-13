@@ -31,7 +31,7 @@ router.get('/', (req, res) => {
     FROM   weekly_tasks wt
     LEFT   JOIN weekly_completions wc
            ON  wc.task_id = wt.id
-           AND wc.date   >= date('now', 'localtime', '-7 days')
+           AND wc.date   >= date('now', 'localtime', '-5 days')
     WHERE  wt.is_trusted = 1
       AND  wt.is_active  = 1
     GROUP  BY wt.id

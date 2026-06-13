@@ -705,15 +705,17 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   });
 });
 
-function renderTab(tab) {
+async function renderTab(tab, preserveScroll = false) {
   const el = $('tab-content');
+  const scrollY = window.scrollY;
   el.innerHTML = '<div class="loading">Loading…</div>';
-  if (tab === 'daily')    renderDaily(el);
-  if (tab === 'weekly')   renderWeekly(el);
-  if (tab === 'tracking') renderTracking(el);
-  if (tab === 'gigs')     renderGigs(el);
-  if (tab === 'earnings') renderEarnings(el);
-  if (tab === 'settings') renderSettings(el);
+  if (tab === 'daily')    await renderDaily(el);
+  if (tab === 'weekly')   await renderWeekly(el);
+  if (tab === 'tracking') await renderTracking(el);
+  if (tab === 'gigs')     await renderGigs(el);
+  if (tab === 'earnings') await renderEarnings(el);
+  if (tab === 'settings') await renderSettings(el);
+  if (preserveScroll) window.scrollTo(0, scrollY);
 }
 
 // ── DAILY TASKS ──────────────────────────────────────────────
@@ -798,7 +800,7 @@ async function renderDaily(el) {
         { kid_id: +kidId, completed: !wasDone });
       if (!res || res.error) { toast('⚠️ Failed to save — try again'); return; }
       toast(!wasDone ? '✓ Marked complete' : 'Marked incomplete');
-      renderTab('daily');
+      renderTab('daily', true);
     });
   });
 
@@ -809,7 +811,7 @@ async function renderDaily(el) {
       const wasJoint = btn.dataset.joint === '1';
       await api('PATCH', `/parent/daily-tasks/${taskId}`, { is_joint: !wasJoint });
       toast(!wasJoint ? '🤝 Joint task — one completion marks all kids done' : 'Task is now individual');
-      renderTab('daily');
+      renderTab('daily', true);
     });
   });
 
@@ -820,7 +822,7 @@ async function renderDaily(el) {
       const wasTrusted = btn.dataset.trusted === '1';
       await api('PATCH', `/parent/daily-tasks/${taskId}`, { is_trusted: !wasTrusted });
       toast(!wasTrusted ? '✋ Task is now self-service on tablet' : 'Task removed from tablet');
-      renderTab('daily');
+      renderTab('daily', true);
     });
   });
 
@@ -830,7 +832,7 @@ async function renderDaily(el) {
       if (!confirm('Remove this daily task?')) return;
       await api('DELETE', `/parent/daily-tasks/${btn.dataset.delDaily}`);
       toast('Task removed');
-      renderTab('daily');
+      renderTab('daily', true);
     });
   });
 
@@ -842,7 +844,7 @@ async function renderDaily(el) {
     if (!title) return;
     await api('POST', '/parent/daily-tasks', { title, kid_id: kid_id ? +kid_id : null, is_joint });
     toast('Daily task added');
-    renderTab('daily');
+    renderTab('daily', true);
   });
 }
 
@@ -925,7 +927,7 @@ async function renderWeekly(el) {
         { kid_id: +kidId, completed: !wasDone });
       if (!res || res.error) { toast('⚠️ Failed to save — try again'); return; }
       toast(!wasDone ? '✓ Marked complete' : 'Marked incomplete');
-      renderTab('weekly');
+      renderTab('weekly', true);
     });
   });
 
@@ -936,7 +938,7 @@ async function renderWeekly(el) {
       const wasJoint = btn.dataset.joint === '1';
       await api('PATCH', `/parent/weekly-tasks/${taskId}`, { is_joint: !wasJoint });
       toast(!wasJoint ? '🤝 Joint task — one completion marks all kids done' : 'Task is now individual');
-      renderTab('weekly');
+      renderTab('weekly', true);
     });
   });
 
@@ -947,7 +949,7 @@ async function renderWeekly(el) {
       const wasTrusted = btn.dataset.trusted === '1';
       await api('PATCH', `/parent/weekly-tasks/${taskId}`, { is_trusted: !wasTrusted });
       toast(!wasTrusted ? '✋ Task is now self-service on tablet' : 'Task removed from tablet');
-      renderTab('weekly');
+      renderTab('weekly', true);
     });
   });
 
@@ -956,7 +958,7 @@ async function renderWeekly(el) {
       if (!confirm('Remove this weekly expectation?')) return;
       await api('DELETE', `/parent/weekly-tasks/${btn.dataset.delWeekly}`);
       toast('Expectation removed');
-      renderTab('weekly');
+      renderTab('weekly', true);
     });
   });
 
@@ -966,7 +968,7 @@ async function renderWeekly(el) {
     if (!title) return;
     await api('POST', '/parent/weekly-tasks', { title, kid_id: kid_id ? +kid_id : null });
     toast('Weekly expectation added');
-    renderTab('weekly');
+    renderTab('weekly', true);
   });
 }
 
@@ -1095,7 +1097,7 @@ async function renderGigs(el) {
           { kid_id: +kidId, completed: !wasDone });
         if (res?.error) { toast(`⚠️ ${res.error}`); return; }
         toast(!wasDone ? `${earner} earned ${fmt(task?.value || 0)} 🎉` : 'Earning removed');
-        renderTab('gigs');
+        renderTab('gigs', true);
       });
     });
   }
@@ -1106,7 +1108,7 @@ async function renderGigs(el) {
         if (!confirm('Archive this gig task?')) return;
         await api('DELETE', `/parent/gig-tasks/${btn.dataset.delGig}`);
         toast('Task archived');
-        renderTab('gigs');
+        renderTab('gigs', true);
       });
     });
   }
@@ -1120,7 +1122,7 @@ async function renderGigs(el) {
         if (res?.error) { toast(`⚠️ ${res.error}`); return; }
         toast(!wasClaimed ? '👨 Marked as parent handled' : 'Released for kids');
         api('POST', '/push');
-        renderTab('gigs');
+        renderTab('gigs', true);
       });
     });
   }
@@ -1140,7 +1142,7 @@ async function renderGigs(el) {
           <button class="btn-sm btn-green" id="eg-save-${id}">Save</button>
           <button class="btn-sm btn-gray"  id="eg-cancel-${id}">Cancel</button>
         `;
-        document.getElementById(`eg-cancel-${id}`).addEventListener('click', () => renderTab('gigs'));
+        document.getElementById(`eg-cancel-${id}`).addEventListener('click', () => renderTab('gigs', true));
         document.getElementById(`eg-save-${id}`).addEventListener('click', async () => {
           const t = document.getElementById(`eg-title-${id}`).value.trim();
           const v = parseFloat(document.getElementById(`eg-value-${id}`).value);
@@ -1148,7 +1150,7 @@ async function renderGigs(el) {
           const res = await api('PATCH', `/parent/gig-tasks/${id}`, { title: t, value: v });
           if (res?.error) { toast(`⚠️ ${res.error}`); return; }
           toast('Task updated');
-          renderTab('gigs');
+          renderTab('gigs', true);
         });
       });
     });
@@ -1167,7 +1169,7 @@ async function renderGigs(el) {
     if (!title || isNaN(value) || value <= 0) { toast('Enter a title and a dollar value'); return; }
     await api('POST', '/parent/gig-tasks', { title, value, type, kid_id: kid_id ? +kid_id : null });
     toast('Gig task added');
-    renderTab('gigs');
+    renderTab('gigs', true);
   });
 }
 
@@ -1249,7 +1251,7 @@ async function renderTracking(el) {
       const wasDone = btn.dataset.trDone === '1';
       await api('POST', `/parent/tracking-tasks/${taskId}/step/${step}/complete`,
         { kid_id: kidId, completed: !wasDone });
-      renderTab('tracking');
+      renderTab('tracking', true);
     });
   });
 
@@ -1259,7 +1261,7 @@ async function renderTracking(el) {
       if (!confirm('Remove this tracking task?')) return;
       await api('DELETE', `/parent/tracking-tasks/${btn.dataset.delTracking}`);
       toast('Tracking task removed');
-      renderTab('tracking');
+      renderTab('tracking', true);
     });
   });
 
@@ -1271,7 +1273,7 @@ async function renderTracking(el) {
     if (!title) { toast('Enter a task name'); return; }
     await api('POST', '/parent/tracking-tasks', { title, step1_label, step2_label });
     toast('Tracking task added');
-    renderTab('tracking');
+    renderTab('tracking', true);
   });
 }
 
@@ -1339,7 +1341,7 @@ async function renderEarnings(el) {
       const res = await api('POST', `/parent/kids/${btn.dataset.cashout}/cashout`);
       if (res?.ok) {
         toast(`💸 ${name} cashed out ${fmt(res.cashedOut)}!`);
-        renderTab('earnings');
+        renderTab('earnings', true);
       }
     });
   });
@@ -1361,7 +1363,7 @@ async function renderEarnings(el) {
       if (res?.error) { toast(`⚠️ ${res.error}`); return; }
       toast(sign > 0 ? `+ ${fmt(raw)} added to ${name}'s bank` : `− ${fmt(raw)} deducted from ${name}'s bank`);
       api('POST', '/push');
-      renderTab('earnings');
+      renderTab('earnings', true);
     };
 
     $(`tx-cancel-${kidId}`).onclick = () => $(`tx-form-${kidId}`).classList.add('hidden');
@@ -1527,7 +1529,7 @@ async function renderSettings(el) {
       if (res?.error) { toast(`⚠️ ${res.error}`); return; }
       await loadKids();
       toast(`${name} removed`);
-      renderTab('settings');
+      renderTab('settings', true);
     });
   });
 
@@ -1538,7 +1540,7 @@ async function renderSettings(el) {
     await api('POST', '/parent/kids', { name, color: KID_COLORS[kidsData.length % KID_COLORS.length] });
     await loadKids();
     toast(`${name} added`);
-    renderTab('settings');
+    renderTab('settings', true);
   });
 
   // Change password
